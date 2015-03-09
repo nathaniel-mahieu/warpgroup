@@ -76,11 +76,17 @@ warpgroup = function(
     p.sc.params
   })
   p.sc.params = do.call("cbind", sc.params.l)
-  consensus.bounds = aperm(p.sc.params)
+  cb = aperm(p.sc.params)
+  cb[,1] = round(cb[,1])
+  cb[,2] = floor(cb[,2])
+  cb[,3] = ceiling(cb[,3])
+  cb[,4] = round(cb[,4])
+  cb[cb<1] = 1
+  consensus.bounds = cb
   
   
   #Fillpeaks: find missing peakbounds with with consensus peak bounds and warps
-  all.samp = seq(xr.l)
+  all.samp = seq(ncol(eic.mat.s))
   pgs = merge(ps, data.frame(cm.mem, n=names(cm.mem)), by = "n", all=T)
   new.gs = split(cm.mem, cm.mem)
   
@@ -112,7 +118,7 @@ warpgroup = function(
     found = cbind(
       n = as.numeric(pnames), 
       consensus.bounds[pnames, c("sc", "sc.min", "sc.max"),drop=F] + start.scan, 
-      samp = ps[as.numeric(pnames),"sample"],
+      sample = ps[as.numeric(pnames),"sample"],
       modularity = NA,
       warp.cost = NA
     )
@@ -121,7 +127,7 @@ warpgroup = function(
     missed = cbind(
       n = rep(NA, n.miss), 
       fill.samps[[i]][, c("sc", "sc.min", "sc.max"),drop=F] + start.scan, 
-      samp = as.numeric(rownames(fill.samps[[i]])),
+      sample = as.numeric(rownames(fill.samps[[i]])),
       modularity = rep(NA, n.miss),
       warp.cost = rep(NA, n.miss)
     )

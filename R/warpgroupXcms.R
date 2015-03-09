@@ -7,12 +7,12 @@ group.warpgroup = function(
   .parallel = F,
   output.groups=F
   ) { #Handles parallelization
-  cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.")
+  cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.\n")
   
   if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
   
   groups = llply(
-    seq_along(xs@groupidx)[1:10],
+    seq_along(xs@groupidx),
     .progress="text", 
     .parallel=.parallel, 
     .paropts=list(
@@ -39,11 +39,11 @@ group.warpgroup = function(
     )
   
   if (output.groups) return(groups)
-  return(warpgroupsToXs(xs, groups)) # Merge back into traditional xcms workflow
+  return(warpgroupsToXs(xs, groups, xr.l)) # Merge back into traditional xcms workflow
 }
 
-warpgroupsToXs = function(xs, groups) {
-  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.")
+warpgroupsToXs = function(xs, groups, xr.l) {
+  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
   
   group.l = unlist(groups, F)
   bad.gs = which(!sapply(group.l, is.matrix))
@@ -53,10 +53,10 @@ warpgroupsToXs = function(xs, groups) {
   pt = do.call("rbind", group.l)
   pt = cbind(pt, group = unlist(lapply(seq(group.l), rep, times=n.samps)))
   
-  ints = llply(group.l, .progress="text", integrate.simple, xr.l, ppm.padding=1)
+  ints = llply(group.l, .progress="text", integrate.simple, xs, xr.l, ppm.padding=1)
   
   pt = cbind(pt, do.call("rbind", ints))
-  pt = pt[order(pt[,"samp"]),]
+  pt = pt[order(pt[,"sample"]),]
   xs@peaks = pt
   
   xs = buildGroups(xs, xs@peaks[,"group"])
@@ -71,7 +71,7 @@ xcms.warpgroup = function(
   sc.drift.lim, 
   ppm.lim, 
   sc.lim
-  ) { #Handles xcms data
+  ) { #Handles xcms setup
   
   xs = add.raw.sc(xs)
   
@@ -116,7 +116,7 @@ xcms.warpgroup = function(
   }
 
   
-  warpgroup(
+  groups = warpgroup(
     ps = ps[,c("mz", "sc", "sc.wmean", "sc.min", "sc.max", "sample"),drop=F], # mz, sc, sc.wmean, scmin, scmax, sample
     eic.mat.s = eic.mat.s,
     start.scan = start.scan,
@@ -125,17 +125,29 @@ xcms.warpgroup = function(
     ppm.lim,
     sc.lim
   )
+  
+  groupidx = rep(g.i, ncol(eic.mat.s))
+  pn = data.frame(n = seq(xs@groupidx[[g.i]]), pn = xs@groupidx[[g.i]])
+  
+  llply(groups, function(g) {
+    pn = merge(g, pn, by="n", all.x = T)[,"pn"]
+    cbind(g, groupidx, pn)
+    })
 }
 
 
-integrate.simple = function(x, xr.l, ppm.padding = 1) {
+
+integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
+  x = xs@peaks[g[,"pn"],,drop=F]
+  
   mzrange.g = c(
     mean(x[,"mzmin"], na.rm=T) - x[1,"mzmin"] * ppm.padding / 1E6, 
     mean(x[,"mzmax"], na.rm=T) + x[1,"mzmax"] * ppm.padding / 1E6
   )
   
-  laply(seq(nrow(x)), function(i) {
+  laply(seq(nrow(g)), function(i) {
     p = x[i,]
+    pg = g[i,]
     
     if (is.na(p["mzmin"]))  {
       mzrange = mzrange.g
@@ -143,13 +155,19 @@ integrate.simple = function(x, xr.l, ppm.padding = 1) {
       mzrange = c(p["mzmin"], p["mzmax"])
     }
     
-    scanrange = as.numeric(floor(c(p["sc.min"], p["sc.max"])))
+    scanrange = as.numeric(floor(c(pg["sc.min"], pg["sc.max"])))
     scanrange[scanrange < 1] = 1
-    maxscan = length(xr.l[[p["samp"]]]@scantime)
+    maxscan = length(xr.l[[pg["sample"]]]@scantime)
     scanrange[scanrange > maxscan] = maxscan 
-    eic = rawEIC(xr.l[[p["samp"]]], mzrange = mzrange, scanrange = scanrange)
+    eic = rawEIC(xr.l[[pg["sample"]]], mzrange = mzrange, scanrange = scanrange)
     
-    rts = xs@rt$corrected[[p[["samp"]]]][eic$scan]
+    # Recalc mz
+    scans = llply(scanrange[1]:scanrange[2], function(x) getScan(xr.l[[pg["sample"]]], x, mzrange))
+    scan.mat = do.call("rbind", scans)
+    min = quantile(scan.mat[,"intensity"], .5)
+    mz = mean(scan.mat[scan.mat[,"intensity"] > c(min), "mz"])
+    
+    rts = xs@rt$corrected[[pg[["sample"]]]][eic$scan]
     
     weightedi = diff(rts) * sapply(
       2:length(eic$intensity), function(x){
@@ -165,7 +183,8 @@ integrate.simple = function(x, xr.l, ppm.padding = 1) {
       mzmax.fill = mzrange[[2]],
       rtmin = min(rts),
       rtmax = max(rts),
-      rt = rtwmean
+      rt = rtwmean,
+      mz = mz
     ))
   })
 }
