@@ -1,0 +1,3 @@
+Package: warpgroup
+Depends: xcms, plyr, reshape2, doParallel, foreach, dtw, igraph
+Version: 0.0.1
