@@ -10,14 +10,13 @@ group.warpgroup = function(
   cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.\n")
   
   if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
-  
+
   groups = llply(
     seq_along(xs@groupidx),
     .progress="text", 
     .parallel=.parallel, 
     .paropts=list(
-      .packages=c("warpgroup", "dtw", "igraph"),
-      .export = c("xs", "xr.l")
+      .packages=c("warpgroup", "dtw", "igraph")#, .export = c("xs", "xr.l")
       ), 
     xs, xr.l,
     
@@ -42,28 +41,6 @@ group.warpgroup = function(
   return(warpgroupsToXs(xs, groups, xr.l)) # Merge back into traditional xcms workflow
 }
 
-warpgroupsToXs = function(xs, groups, xr.l) {
-  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
-  
-  group.l = unlist(groups, F)
-  bad.gs = which(!sapply(group.l, is.matrix))
-  for (bg in rev(bad.gs)) group.l[[bg]] = NULL
-  n.samps = nrow(group.l[[1]])
-  
-  pt = do.call("rbind", group.l)
-  pt = cbind(pt, group = unlist(lapply(seq(group.l), rep, times=n.samps)))
-  
-  ints = llply(group.l, .progress="text", integrate.simple, xs, xr.l, ppm.padding=1)
-  
-  pt = cbind(pt, do.call("rbind", ints))
-  pt = pt[order(pt[,"sample"]),]
-  xs@peaks = pt
-  
-  xs = buildGroups(xs, xs@peaks[,"group"])
-  
-  return(xs)
-}
-
 xcms.warpgroup = function(
   xs, 
   g.i, 
@@ -78,7 +55,6 @@ xcms.warpgroup = function(
   ps = xs@peaks[xs@groupidx[[g.i]],,drop=F] 
   ps = cbind(
     ps,
-    n = 1:nrow(ps),
     sc.wmean = rep(NA, nrow(ps))
     )
  
@@ -114,7 +90,6 @@ xcms.warpgroup = function(
     eic = rawEIC(xr.l[[i]], mzrange = c(mzmin, mzmax), scanrange = scans)$intensity
     eic.mat.s[1:length(eic),i] = eic
   }
-
   
   groups = warpgroup(
     ps = ps[,c("mz", "sc", "sc.wmean", "sc.min", "sc.max", "sample"),drop=F], # mz, sc, sc.wmean, scmin, scmax, sample
@@ -126,15 +101,44 @@ xcms.warpgroup = function(
     sc.lim
   )
   
-  groupidx = rep(g.i, ncol(eic.mat.s))
-  pn = data.frame(n = seq(xs@groupidx[[g.i]]), pn = xs@groupidx[[g.i]])
-  
+  pn = as.matrix(data.frame(
+    n = seq(xs@groupidx[[g.i]]), pn = xs@groupidx[[g.i]]
+    ))
   llply(groups, function(g) {
-    pn = merge(g, pn, by="n", all.x = T)[,"pn"]
-    cbind(g, groupidx, pn)
+    as.matrix(merge(g, pn, by="n", all.x = T))
     })
 }
 
+
+
+
+warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
+  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
+  
+  group.l = unlist(groups, F)
+  bad.gs = which(!sapply(group.l, is.matrix))
+  warning(paste(length(bad.gs), "groups were removed due to errors."))
+  for (bg in rev(bad.gs)) group.l[[bg]] = NULL
+  
+  sum.dups = 0
+  
+  pt.l = llply(seq(group.l), .progress="text", function(i) {
+    g = group.l[[i]]
+    dupd = duplicated(g[,"sample"]); sum.dups = sum.dups + sum(dupd)
+    g = g[!dupd,,drop=F]
+    g = cbind(g, new.gidx = i)
+    
+    ints = integrate.simple(g, xs, xr.l, ppm.padding = ppm.padding)
+    cbind(g, ints)
+  })
+  warning(paste(sum.dups, "peaks were removed as duplicates. Merging not implemented."))
+  
+  pt = do.call("rbind", pt.l)
+  xs@peaks = pt[order(pt[,"sample"]),]
+  xs = buildGroups(xs, xs@peaks[,"new.gidx"])
+  
+  return(xs)
+}
 
 
 integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
@@ -268,5 +272,20 @@ buildGroups = function(xs, pgs) {
       )
   }
   xs@groups = groupval
+  xs
+}
+
+add.raw.sc = function(xs) {
+  rt.scans = matrix(NA, ncol=3, nrow=nrow(xs@peaks), dimnames=list(NULL, c("sc", "sc.min", "sc.max")))
+  
+  for (i in unique(xs@peaks[,"sample"])) {
+    which.ps = which(xs@peaks[,"sample"]==i)
+    rt.sc = stepfun(
+      xs@rt$corrected[[i]][-1],
+      seq_along(xs@rt$corrected[[i]])
+    )
+    rt.scans[which.ps,] = rt.sc(xs@peaks[which.ps,c("rt", "rtmin", "rtmax")])
+  }
+  xs@peaks = cbind(xs@peaks, rt.scans)
   xs
 }

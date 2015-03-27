@@ -5,7 +5,8 @@ warpgroup = function(
   
   sc.drift.lim,
   ppm.lim,
-  sc.lim
+  sc.lim,
+  plot.warpgroup=F
 ) {
   ps = cbind(ps, n=1:nrow(ps))
   
