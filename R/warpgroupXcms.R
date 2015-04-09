@@ -16,7 +16,7 @@ group.warpgroup = function(
     .progress="text", 
     .parallel=.parallel, 
     .paropts=list(
-      .packages=c("warpgroup", "dtw", "igraph")#, .export = c("xs", "xr.l")
+      .packages=c("warpgroup", "dtw", "igraph", "xcms")#, .export = c("xs", "xr.l")
       ), 
     xs, xr.l,
     
