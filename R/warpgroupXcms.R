@@ -131,7 +131,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
     ints = integrate.simple(g, xs, xr.l, ppm.padding = ppm.padding)
     cbind(g, ints)
   })
-  warning(paste(sum.dups, "peaks were removed as duplicates. Merging not implemented."))
+  if (sum.dups > 0) warning(paste(sum.dups, "peaks were removed as duplicates. Merging not implemented."))
   
   pt = do.call("rbind", pt.l)
   xs@peaks = pt[order(pt[,"sample"]),]
@@ -145,8 +145,8 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
   x = xs@peaks[g[,"pn"],,drop=F]
   
   mzrange.g = c(
-    mean(x[,"mzmin"], na.rm=T) - x[1,"mzmin"] * ppm.padding / 1E6, 
-    mean(x[,"mzmax"], na.rm=T) + x[1,"mzmax"] * ppm.padding / 1E6
+    min(x[,"mzmin"], na.rm=T) - x[1,"mzmin"] * ppm.padding / 1E6, 
+    max(x[,"mzmax"], na.rm=T) + x[1,"mzmax"] * ppm.padding / 1E6
   )
   
   laply(seq(nrow(g)), function(i) {

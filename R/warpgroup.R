@@ -12,6 +12,7 @@ warpgroup = function(
   
   #Find warped alignment between sample summed EICs
   dtw.step = buildStepMat(eic.mat.s)
+  #dtw.mat = buildDtwMat(eic.mat.s)
   
   
   #Find predicted scan end and begin in all warp spaces.
@@ -63,9 +64,9 @@ warpgroup = function(
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
-      pct90 = aaply(abs(sc.a), c(3), quantile, 0.9) # Should this be sc.aad?
+      pct90 = aaply(abs(sc.d), c(3), quantile, 0.9)
       
-      voters = laply(seq(dim(sc.a)[3]), function(i) sc.a[,,i,drop=F] <= pct90[[i]])
+      voters = laply(seq(dim(sc.d)[3]), function(i) sc.d[,,i,drop=F] <= pct90[[i]])
       voters = aperm(voters, c(2,3,1))
       
       sc.a.vote = sc.a; sc.a.vote[!voters] = NA
@@ -134,5 +135,7 @@ warpgroup = function(
     )
     
     foo = rbind(found,missed)
+    
+    foo[foo < 1] = 1
   })
 }
