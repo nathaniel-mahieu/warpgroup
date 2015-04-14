@@ -47,8 +47,19 @@ warpgroup = function(
     #cm.ppm = walktrap.community(g2.ppm, weights=1/topo.ppm$value)
     #plot(cm.ppm, g2.ppm, edge.width = 1/topo.ppm$value)
     
+    # Old function
+    #function(sc.ds) (
+    #  sc.ds[1] < sc.lim | 
+    #    sc.ds[4] < sc.lim) | 
+    #  (sc.ds[2] < sc.lim & sc.ds[3] < sc.lim)
+    #)
+    
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), 
-                      function(sc.ds) (sc.ds[1] < sc.lim | sc.ds[4] < sc.lim) | (sc.ds[2] < sc.lim & sc.ds[3] < sc.lim)
+                      function(sc.ds) (
+                        sc.ds[2] < sc.lim & sc.ds[3] < sc.lim |
+                        sc.ds[1] < sc.lim*.75 & sc.ds[2] < sc.lim |
+                        sc.ds[1] < sc.lim*.75 & sc.ds[3] < sc.lim
+                      )
     )
     topology = which(match.mat, arr.ind=T)
     g2 = graph.data.frame(topology, directed=F)
@@ -64,13 +75,13 @@ warpgroup = function(
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
-      pct90 = aaply(abs(sc.d), c(3), quantile, 0.9)
+      pct90 = aaply(abs(sc.d), c(3), quantile, 0.8)
       
       voters = laply(seq(dim(sc.d)[3]), function(i) sc.d[,,i,drop=F] <= pct90[[i]])
       voters = aperm(voters, c(2,3,1))
       
       sc.a.vote = sc.a; sc.a.vote[!voters] = NA
-      p.sc.params = aaply(sc.a.vote, c(3), colMeans, na.rm=T)
+      p.sc.params = aaply(sc.a.vote, c(3), colMedians, na.rm=T)
     } else {
       p.sc.params = aaply(sc.a, 3, .drop=F, function(x) x)
     }
@@ -134,8 +145,6 @@ warpgroup = function(
       warp.cost = rep(NA, n.miss)
     )
     
-    foo = rbind(found,missed)
-    
-    foo[foo < 1] = 1
+    rbind(found,missed)
   })
 }
