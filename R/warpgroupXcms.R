@@ -208,34 +208,26 @@ add.raw.sc = function(xs) {
   xs
 }
 
-
-plotGroup = function(i, groups, integrates, xs, xr.l) {
-  g = groups[[i]]
-  int = integrates[[i]]
-  ps = xs@peaks[na.omit(g[,"centWave.pn"]),,drop=F]
+plotGroup.xs = function(i, xs, xr.l) {
+  g = xs@groupidx[[i]]
+  ps = xs@peaks[g,,drop=F]
   
-  scan.range = c(min(g[,"sc.min"], na.rm=T), max(g[,"sc.max"], na.rm=T))
-  eic.mat = matrix(numeric(), ncol = nrow(g), nrow = scan.range[2]-scan.range[1])
+  scan.range = c(floor(min(ps[,"sc.min"], na.rm=T)), ceiling(max(ps[,"sc.max"], na.rm=T)))
+  eic.mat = matrix(numeric(), ncol = nrow(ps), nrow = scan.range[2]-scan.range[1]+1)
   
-  for (j in seq(g[,1])) {
-    if (!is.na(g[j,"mzmin"])) {
-      mz.range = c(g[j,"mzmin"], g[j,"mzmax"])
-    } else {
-      mz.range = c(int[j,"mzmin.fill"], int[j,"mzmax.fill"])
-    }
-    
-    eic.mat[,j] = rawEIC(xr.l[[g[j,"samp"]]], mzrange = mz.range, scanrange = scan.range)$intensity 
+  for (j in seq(ps[,1])) {
+    mz.range = unname(c(ps[j,"mzmin.fill"], ps[j,"mzmax.fill"]))
+    eic.mat[,j] = rawEIC(xr.l[[ps[j,"sample"]]], mzrange = mz.range, scanrange = scan.range)$intensity 
   }
   
   plot.me = melt(eic.mat)
   colnames(plot.me) = c("scan", "peak", "int")
   plot.me[,"peak"] = factor(plot.me[,"peak"])
   
-  annos = dcast(melt(int))
-  
-  ggplot(plot.me, aes(y=int, x= scan, colour=peak)) + 
-    geom_path() + 
-    facet_grid(peak ~ ., scales="free_y")
+  annos = data.frame(ps)
+  annos[,"n"] = seq(annos[,1])
+  colnames(annos)[1:4] = c("peak","scwm", "scmax", "scmin")
+  annos[,2:4] = annos[,2:4] - min(scan.range)
   
   ggplot() + 
     geom_path(data = plot.me, aes(y=int, x= scan, colour=peak)) + 
@@ -243,7 +235,6 @@ plotGroup = function(i, groups, integrates, xs, xr.l) {
     geom_point(data=annos, mapping=aes(y=0, x=scmin), colour="#000000") +
     geom_vline(data=annos, mapping=aes(xintercept=scwm), colour="#000000", alpha=0.3)+
     facet_grid(peak ~ ., scales="free_y")
-  
 }
 
 buildGroups = function(xs, pgs) {
