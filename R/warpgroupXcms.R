@@ -1,9 +1,9 @@
 group.warpgroup = function(
   xs,
   xr.l=NULL,
-  sc.drift.lim, 
-  ppm.lim, 
-  sc.lim, 
+  sc.max.drift, 
+  ppm.max.drift, 
+  sc.aligned.lim, 
   .parallel = F,
   output.groups=F
   ) { #Handles parallelization
@@ -27,9 +27,9 @@ group.warpgroup = function(
           xs = xs, 
           g.i = i, 
           xr.l = xr.l,
-          sc.drift.lim=sc.drift.lim, 
-          ppm.lim = ppm.lim, 
-          sc.lim = sc.lim
+          sc.max.drift=sc.max.drift, 
+          ppm.max.drift = ppm.max.drift, 
+          sc.aligned.lim = sc.aligned.lim
           ),
         error=paste,
         finally = return
@@ -45,45 +45,25 @@ xcms.warpgroup = function(
   xs, 
   g.i, 
   xr.l,
-  sc.drift.lim, 
-  ppm.lim, 
-  sc.lim
+  sc.max.drift, 
+  ppm.max.drift, 
+  sc.aligned.lim
   ) { #Handles xcms setup
   
   xs = add.raw.sc(xs)
   
   ps = xs@peaks[xs@groupidx[[g.i]],,drop=F] 
-  ps = cbind(
-    ps,
-    sc.wmean = rep(NA, nrow(ps))
-    )
  
   scans = c(
-    min(ps[,"sc.min"])-sc.drift.lim, 
-    max(ps[,"sc.max"])+sc.drift.lim
+    min(ps[,"scmin"])-sc.max.drift, 
+    max(ps[,"scmax"])+sc.max.drift
     )
   scans[scans <= 0] = 1
   start.scan = min(scans)-1
-  
-  #Per peak eic matrix
-  eic.mat = matrix(integer(1), ncol=nrow(ps), nrow=length(scans[1]:scans[2]))
-  for (i in seq_along(ps[,1])) {
-    eic = rawEIC(xr.l[[ps[i,"sample"]]], mzrange = c(ps[i,"mzmin"], ps[i,"mzmax"]), scanrange = scans)$intensity 
-    eic.mat[1:length(eic),i] = eic
-  }
-  
-  #Find weighted mean of centWave bounds to help define peak groups
-  sc.wmean = laply(seq_along(eic.mat[1,]), function(i) {
-    eic = eic.mat[,i]
-    peakrange = ps[i,"sc.min"]:ps[i,"sc.max"] - start.scan
-    sum(eic[peakrange] * peakrange)/sum(eic[peakrange]) + start.scan
-  })
-  ps[,"sc.wmean"] = c(sc.wmean)
-  
-  
+
   #Per sample, summed EIC matrix for alignment
-  mzmin = min(ps[,"mzmin"] - ps[,"mzmin"] * ppm.lim/1E6)
-  mzmax = max(ps[,"mzmax"] + ps[,"mzmax"] * ppm.lim/1E6)
+  mzmin = min(ps[,"mzmin"] - ps[,"mzmin"] * ppm.max.drift/1E6)
+  mzmax = max(ps[,"mzmax"] + ps[,"mzmax"] * ppm.max.drift/1E6)
   
   eic.mat.s = matrix(integer(1), ncol=length(xr.l), nrow=length(scans[1]:scans[2]))
   for (i in seq_along(xr.l)) { 
@@ -91,14 +71,14 @@ xcms.warpgroup = function(
     eic.mat.s[1:length(eic),i] = eic
   }
   
+  ps.m = ps[,c("sc", "scmin", "scmax", "sample"),drop=F]; ps.m[,c("sc", "scmin", "scmax")] = ps.m[,c("sc", "scmin", "scmax")] - start.scan;
+  
   groups = warpgroup(
-    ps = ps[,c("mz", "sc", "sc.wmean", "sc.min", "sc.max", "sample"),drop=F], # mz, sc, sc.wmean, scmin, scmax, sample
+    ps = ps.m, # sc, scmin, scmax, sample
     eic.mat.s = eic.mat.s,
-    start.scan = start.scan,
     
-    sc.drift.lim,
-    ppm.lim,
-    sc.lim
+    sc.max.drift,
+    sc.aligned.lim
   )
   
   pn = as.matrix(data.frame(
@@ -156,7 +136,10 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
     if (is.na(p["mzmin"]))  {
       mzrange = mzrange.g
     } else {
-      mzrange = c(p["mzmin"], p["mzmax"])
+      mzrange = c(
+        p["mzmin"] - p["mzmin"] * ppm.padding / 1E6, 
+        p["mzmax"] + p["mzmin"] * ppm.padding / 1E6
+        )
     }
     
     scanrange = as.numeric(floor(c(pg["sc.min"], pg["sc.max"])))
@@ -267,7 +250,7 @@ buildGroups = function(xs, pgs) {
 }
 
 add.raw.sc = function(xs) {
-  rt.scans = matrix(NA, ncol=3, nrow=nrow(xs@peaks), dimnames=list(NULL, c("sc", "sc.min", "sc.max")))
+  rt.scans = matrix(NA, ncol=3, nrow=nrow(xs@peaks), dimnames=list(NULL, c("sc", "scmin", "scmax")))
   
   for (i in unique(xs@peaks[,"sample"])) {
     which.ps = which(xs@peaks[,"sample"]==i)

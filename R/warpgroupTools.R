@@ -27,7 +27,7 @@ prepEicMat = function(eic.mat, n.pad=0) {
 }
 
 buildDtwMat = function(eic.mat) {
-  n.pad = floor(nrow(eic.mat) * .25)
+  n.pad = floor(nrow(eic.mat) * .1)
   eic.mat = prepEicMat(eic.mat, n.pad)
   
   llply(seq_along(eic.mat[1,]), function(i) {
@@ -39,7 +39,7 @@ buildDtwMat = function(eic.mat) {
 
 
 buildStepMat = function(eic.mat) {  
-  n.pad = floor(nrow(eic.mat) * .25)
+  n.pad = floor(nrow(eic.mat) * .1)
   eic.mat = prepEicMat(eic.mat, n.pad)
   
   llply(seq_along(eic.mat[1,]), function(i) {

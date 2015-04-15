@@ -1,31 +1,26 @@
 warpgroup = function(
-  ps, # mz, sc, scmin, scmax, sample
+  ps, # sc, scmin, scmax, sample
   eic.mat.s,
-  start.scan,
-  
-  sc.drift.lim,
-  ppm.lim,
-  sc.lim,
-  plot.warpgroup=F
+  sc.max.drift,
+  sc.aligned.lim
 ) {
   ps = cbind(ps, n=1:nrow(ps))
   
   #Find warped alignment between sample summed EICs
-  dtw.step = buildStepMat(eic.mat.s)
-  #dtw.mat = buildDtwMat(eic.mat.s)
+  dtw.step = buildStepMat(eic.mat.s) #dtw.mat = buildDtwMat(eic.mat.s)
   
   
   #Find predicted scan end and begin in all warp spaces.
-  sc.warps = array(numeric(), dim = c(nrow(ps), nrow(ps), 4), dimnames=list(NULL,NULL, c("sc", "sc.min", "sc.max", "sc.wmean")))
+  sc.warps = array(numeric(), dim = c(nrow(ps), nrow(ps), 3), dimnames=list(NULL,NULL, c("sc", "scmin", "scmax")))
   sc.warps.diffs = sc.warps
   for(i in seq_along(ps[,1])) { 
     a = ps[i,];
     for(j in seq_along(ps[,1])) { 
       b= ps[j,];
       a.sc.a = dtw.step[[a["sample"]]][[b["sample"]]](
-        a[c("sc", "sc.min", "sc.max", "sc.wmean")] - start.scan
+        a[c("sc", "scmin", "scmax")]
       )
-      b.sc.a = b[c("sc", "sc.min", "sc.max", "sc.wmean")] - start.scan
+      b.sc.a = b[c("sc", "scmin", "scmax")]
       sc.warps[i,j,] = a.sc.a
       sc.warps.diffs[i,j,] = (a.sc.a - b.sc.a)
     }
@@ -36,118 +31,87 @@ warpgroup = function(
   if (nrow(ps) < 2) {
     cm.mem = c("1" = 1)
   } else {
-    #ppm.mat = outer(ps[,"mz"], ps[,"mz"], function(x,y) abs(x-y)/x*1E6)
-    #ppm.mat[upper.tri(ppm.mat, T)] = NA
-    #topo.ppm = melt(ppm.mat)
-    #topo.ppm = topo.ppm[!is.na(topo.ppm[,"value"]),]
-    #topo.ppm[,"value"] = topo.ppm[,"value"] * 2
-    #topo.ppm[topo.ppm[,"value"] < 1,"value"] = 1
-    
-    #g2.ppm = graph.data.frame(topo.ppm, directed=F)
-    #cm.ppm = walktrap.community(g2.ppm, weights=1/topo.ppm$value)
-    #plot(cm.ppm, g2.ppm, edge.width = 1/topo.ppm$value)
-    
-    # Old function
-    #function(sc.ds) (
-    #  sc.ds[1] < sc.lim | 
-    #    sc.ds[4] < sc.lim) | 
-    #  (sc.ds[2] < sc.lim & sc.ds[3] < sc.lim)
-    #)
-    
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), 
                       function(sc.ds) (
-                        sc.ds[2] < sc.lim & sc.ds[3] < sc.lim |
-                        sc.ds[1] < sc.lim*.75 & sc.ds[2] < sc.lim |
-                        sc.ds[1] < sc.lim*.75 & sc.ds[3] < sc.lim
+                        sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
+                        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
+                        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
                       )
     )
     topology = which(match.mat, arr.ind=T)
     g2 = graph.data.frame(topology, directed=F)
     cm = walktrap.community(g2)
     cm.mem = membership(cm)
+    
+    g.l = split(cm.mem, cm.mem)
   }
   
   
   #Define peak bounds!
-  sc.params.l = llply(unique(cm.mem), function(x) {
+  cb.l = llply(unique(cm.mem), function(x) {
     pns.g = as.numeric(names(cm.mem[cm.mem == x]))
     sc.d = sc.warps.diffs[pns.g,pns.g,,drop=F] # How many scans apart the centwave peak bounds are after DTW
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
-      #pct90 = aaply(abs(sc.d), c(3), quantile, 0.8)
-      zscores = aaply(abs(sc.d), c(3), scale)
+      zscores = aperm(
+        aaply(sc.d, c(3), scale),
+        c(2,3,1)
+        )
       
       voters = zscores > -1 & zscores < 1
+      sc.a[!voters] = NA
       
-      #voters = laply(seq(dim(sc.d)[3]), function(i) sc.d[,,i,drop=F] <= pct90[[i]])
-      voters = aperm(voters, c(2,3,1))
-      
-      sc.a.vote = sc.a; sc.a.vote[!voters] = NA
-      p.sc.params = aaply(sc.a.vote, c(3), colMedians, na.rm=T)
+      p.sc.params = aaply(sc.a, c(3), colMedians, na.rm=T)
     } else {
-      p.sc.params = aaply(sc.a, 3, .drop=F, function(x) x)
+      p.sc.params = aaply(sc.a, c(3), .drop=F, identity)
     }
+    
     colnames(p.sc.params) = pns.g
     p.sc.params
   })
-  p.sc.params = do.call("cbind", sc.params.l)
-  cb = aperm(p.sc.params)
-  cb[,1] = round(cb[,1])
-  cb[,2] = floor(cb[,2])
-  cb[,3] = ceiling(cb[,3])
-  cb[,4] = round(cb[,4])
-  cb[cb<1] = 1
-  consensus.bounds = cb
   
   
-  #Fillpeaks: find missing peakbounds with with consensus peak bounds and warps
-  all.samp = seq(ncol(eic.mat.s))
-  pgs = merge(ps, data.frame(cm.mem, n=names(cm.mem)), by = "n", all=T)
-  new.gs = split(cm.mem, cm.mem)
-  
-  miss.samps = llply(new.gs, function(x) which(!all.samp %in% subset(pgs, cm.mem == x[1])[,"sample"]))
-  
-  fill.samps = llply(seq(miss.samps), function(i) {
-    miss = miss.samps[[i]]  
-    pres = names(new.gs[[i]])
-    consensus.bounds[pres,]
-    fills = array(numeric(), dim=c(length(miss), length(pres), ncol(consensus.bounds)))
-    dimnames(fills) = list(miss,pres,colnames(consensus.bounds))
+  #Fillpeaks: find peakbounds pf missing peaks with with consensus-bounds found above and warps between raw data
+  mb.l = llply(cb.l, function(cb) {
+    found = ps[as.numeric(colnames(cb)), "sample"]
+    missing = which(!all.samp %in% found)
     
-    for(i in miss) { 
-      for(j in pres) {          
-        fills[as.character(i),j,] = dtw.step[[pgs[j,"sample"]]][[i]](consensus.bounds[j,])
-      }
-    }
-    foo = aaply(fills, c(1,3), mean)
-    dim(foo) = dim(fills)[c(1,3)]
-    colnames(foo) = dimnames(fills)[[3]]
-    rownames(foo) = dimnames(fills)[[1]]
-    foo
+    if (length(missing) < 1) return(NULL)
+    
+    mb = aperm(
+      aaply(missing, 1, .drop=F, function(j) {
+        aaply(colnames(cb), 1, .drop=F, function(i) {
+          dtw.step[[ps[as.numeric(i),"sample"]]][[j]](
+            cb[,i]
+          )
+        })
+      })
+    )
+    dimnames(mb) = c(dimnames(cb), list(missing))
+    
+    aaply(mb, c(1,3), median)
   })
   
   
-  #Return data
-  llply(seq(new.gs), function(i) {
-    pnames = names(new.gs[[i]])
-    found = cbind(
-      n = as.numeric(pnames), 
-      consensus.bounds[pnames, c("sc", "sc.min", "sc.max"),drop=F] + start.scan, 
-      sample = ps[as.numeric(pnames),"sample"],
-      modularity = NA,
-      warp.cost = NA
-    )
+  # Return Data
+  llply(seq(cb.l), function(i) {
+    cb = cb.l[[i]]
+    cb.r = rbind(cb, n = as.numeric(colnames(cb)), sample = ps[as.numeric(colnames(cb)),"sample"])
+    peaks = cb.r
     
-    n.miss = nrow(fill.samps[[i]])
-    missed = cbind(
-      n = rep(NA, n.miss), 
-      fill.samps[[i]][, c("sc", "sc.min", "sc.max"),drop=F] + start.scan, 
-      sample = as.numeric(rownames(fill.samps[[i]])),
-      modularity = rep(NA, n.miss),
-      warp.cost = rep(NA, n.miss)
-    )
+    mb = mb.l[[i]]
+    if (!is.null(mb)) {
+      mb.r = rbind(mb, sample = as.numeric(colnames(mb)))
+      
+      peaks = merge(cb.r, mb.r, "row.names", all=T)
+      rownames(peaks) = peaks[,"Row.names"]
+      peaks = as.matrix(peaks[,-1])
+    }
     
-    rbind(found,missed)
+    peaks = aperm(peaks)[,c("n", "sample", "sc", "scmin", "scmax")]
+    rownames(peaks) = NULL
+    
+    peaks[order(peaks[,"sample"]),]
   })
 }
