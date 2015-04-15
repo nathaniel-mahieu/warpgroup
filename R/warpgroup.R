@@ -71,13 +71,16 @@ warpgroup = function(
   #Define peak bounds!
   sc.params.l = llply(unique(cm.mem), function(x) {
     pns.g = as.numeric(names(cm.mem[cm.mem == x]))
-    sc.d = sc.warps.diffs[pns.g,pns.g,,drop=F]
+    sc.d = sc.warps.diffs[pns.g,pns.g,,drop=F] # How many scans apart the centwave peak bounds are after DTW
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
-      pct90 = aaply(abs(sc.d), c(3), quantile, 0.8)
+      #pct90 = aaply(abs(sc.d), c(3), quantile, 0.8)
+      zscores = aaply(abs(sc.d), c(3), scale)
       
-      voters = laply(seq(dim(sc.d)[3]), function(i) sc.d[,,i,drop=F] <= pct90[[i]])
+      voters = zscores > -1 & zscores < 1
+      
+      #voters = laply(seq(dim(sc.d)[3]), function(i) sc.d[,,i,drop=F] <= pct90[[i]])
       voters = aperm(voters, c(2,3,1))
       
       sc.a.vote = sc.a; sc.a.vote[!voters] = NA
