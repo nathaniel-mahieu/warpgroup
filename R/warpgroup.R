@@ -75,6 +75,7 @@ warpgroup = function(
   #Fillpeaks: find peakbounds pf missing peaks with with consensus-bounds found above and warps between raw data
   mb.l = llply(cb.l, function(cb) {
     found = ps[as.numeric(colnames(cb)), "sample"]
+    all.samp = seq(ncol(eic.mat.s))
     missing = which(!all.samp %in% found)
     
     if (length(missing) < 1) return(NULL)
