@@ -58,6 +58,7 @@ group.warpgroup = function(
     params = iter.gwparams(xs, xr.l, sc.max.drift, ppm.max.drift),
     .packages = c("warpgroup", "dtw", "igraph")
     ) %dopar% {
+      redisIncrBy ("count", 1)
       
       groups = tryCatch(
         {
@@ -91,7 +92,10 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
   cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
   
   group.l = unlist(groups, F)
-  bad.gs = which(!sapply(group.l, is.matrix))
+  bad.gs = unique(c(
+    which(!sapply(group.l, is.matrix)),
+    which(sapply(group.l, function(x) { any(is.na(x[,"sample"])) }))
+  ))
   warning(paste(length(bad.gs), "groups were removed due to errors."))
   for (bg in rev(bad.gs)) group.l[[bg]] = NULL
   
@@ -137,7 +141,7 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
         )
     }
     
-    scanrange = as.numeric(floor(c(pg["sc.min"], pg["sc.max"])))
+    scanrange = as.numeric(floor(c(pg["scmin"], pg["scmax"])))
     scanrange[scanrange < 1] = 1
     maxscan = length(xr.l[[pg["sample"]]]@scantime)
     scanrange[scanrange > maxscan] = maxscan 
@@ -171,26 +175,11 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
   })
 }
 
-add.raw.sc = function(xs) {
-  rt.scans = matrix(NA, ncol=3, nrow=nrow(xs@peaks), dimnames=list(NULL, c("sc", "sc.min", "sc.max")))
-  
-  for (i in unique(xs@peaks[,"sample"])) {
-    which.ps = which(xs@peaks[,"sample"]==i)
-    rt.sc = stepfun(
-      xs@rt$corrected[[i]][-1],
-      seq_along(xs@rt$corrected[[i]])
-    )
-    rt.scans[which.ps,] = rt.sc(xs@peaks[which.ps,c("rt", "rtmin", "rtmax")])
-  }
-  xs@peaks = cbind(xs@peaks, rt.scans)
-  xs
-}
-
 plotGroup.xs = function(i, xs, xr.l) {
   g = xs@groupidx[[i]]
   ps = xs@peaks[g,,drop=F]
   
-  scan.range = c(floor(min(ps[,"sc.min"], na.rm=T)), ceiling(max(ps[,"sc.max"], na.rm=T)))
+  scan.range = c(floor(min(ps[,"scmin"], na.rm=T)), ceiling(max(ps[,"scmax"], na.rm=T)))
   eic.mat = matrix(numeric(), ncol = nrow(ps), nrow = scan.range[2]-scan.range[1]+1)
   
   for (j in seq(ps[,1])) {
