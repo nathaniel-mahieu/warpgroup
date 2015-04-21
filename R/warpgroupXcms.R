@@ -45,8 +45,7 @@ group.warpgroup = function(
   xr.l=NULL,
   sc.max.drift, 
   ppm.max.drift, 
-  sc.aligned.lim, 
-  .parallel = F, #Obsolete
+  sc.aligned.lim,
   output.groups=F
 ) { #Handles parallelization
   cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.\n")
@@ -58,7 +57,7 @@ group.warpgroup = function(
     params = iter.gwparams(xs, xr.l, sc.max.drift, ppm.max.drift),
     .packages = c("warpgroup", "dtw", "igraph")
     ) %dopar% {
-      redisIncrBy ("count", 1)
+      tryCatch(redisIncrBy("count", 1), error=function(e) NULL)
       
       groups = tryCatch(
         {
@@ -96,7 +95,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
     which(!sapply(group.l, is.matrix)),
     which(sapply(group.l, function(x) { any(is.na(x[,"sample"])) }))
   ))
-  warning(paste(length(bad.gs), "groups were removed due to errors."))
+  if (length(bad.gs) > 0) warning(paste(length(bad.gs), "groups were removed due to errors."))
   for (bg in rev(bad.gs)) group.l[[bg]] = NULL
   
   sum.dups = 0
@@ -108,7 +107,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
     g = cbind(g, new.gidx = i)
     
     ints = integrate.simple(g, xs, xr.l, ppm.padding = ppm.padding)
-    cbind(g, ints)
+    cbind(ints, g)
   })
   if (sum.dups > 0) warning(paste(sum.dups, "peaks were removed as duplicates. Merging not implemented."))
   
@@ -124,8 +123,8 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
   x = xs@peaks[g[,"pn"],,drop=F]
   
   mzrange.g = c(
-    min(x[,"mzmin"], na.rm=T) - x[1,"mzmin"] * ppm.padding / 1E6, 
-    max(x[,"mzmax"], na.rm=T) + x[1,"mzmax"] * ppm.padding / 1E6
+    min(x[,"mzmin"], na.rm=T) - max(x[,"mzmin"], na.rm=T) * ppm.padding / 1E6, 
+    max(x[,"mzmax"], na.rm=T) + max(x[,"mzmax"], na.rm=T) * ppm.padding / 1E6
   )
   
   laply(seq(nrow(g)), function(i) {
@@ -163,14 +162,14 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
     rtwmean = sum(weightedi * rts[-1]) / into
     
     as.matrix(data.frame(
-      maxo = max(eic$intensity),
-      into = into,
-      mzmin.fill = mzrange[[1]],
-      mzmax.fill = mzrange[[2]],
-      rtmin = min(rts),
-      rtmax = max(rts),
+      mz = mz,
       rt = rtwmean,
-      mz = mz
+      into = into,
+      maxo = max(eic$intensity),
+      mzmin = mzrange[[1]],
+      mzmax = mzrange[[2]],
+      rtmin = min(rts),
+      rtmax = max(rts)
     ))
   })
 }

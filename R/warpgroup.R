@@ -34,8 +34,8 @@ warpgroup = function(
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), 
                       function(sc.ds) (
                         sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
-                        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
-                        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
+                          sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
+                          sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
                       )
     )
     topology = which(match.mat, arr.ind=T)
@@ -57,7 +57,7 @@ warpgroup = function(
       zscores = aperm(
         aaply(sc.d, c(3), scale),
         c(2,3,1)
-        )
+      )
       
       voters = zscores > -1 & zscores < 1
       sc.a[!voters] = NA
@@ -91,7 +91,11 @@ warpgroup = function(
     )
     dimnames(mb) = c(dimnames(cb), list(missing))
     
-    aaply(mb, c(1,3), median)
+    foo = aaply(mb, c(1,3), median, .drop=F)
+    ns = dimnames(foo)[1:2]
+    dim(foo) = dim(foo)[-3]
+    dimnames(foo) = ns
+    foo
   })
   
   
