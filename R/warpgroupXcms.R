@@ -6,11 +6,14 @@ iter.gwparams = function(xs, xr.l, sc.max.drift, ppm.max.drift) {
     
     ps = xs@peaks[gidx,,drop=F] 
     
+    maxscan = min(sapply(xr.l, function(x) { length(x@scantime) }))
+    
     scans = c(
       min(ps[,"scmin"])-sc.max.drift, 
       max(ps[,"scmax"])+sc.max.drift
     )
     scans[scans <= 0] = 1
+    scans[scans > maxscan] = maxscan
     start.scan = min(scans)-1
     
     ps.m = ps[,c("sc", "scmin", "scmax", "sample"),drop=F]; ps.m[,c("sc", "scmin", "scmax")] = ps.m[,c("sc", "scmin", "scmax")] - start.scan;
@@ -29,7 +32,8 @@ iter.gwparams = function(xs, xr.l, sc.max.drift, ppm.max.drift) {
     list(
       eic.mat.s = eic.mat.s,
       ps = ps.m,
-      gidx = gidx
+      gidx = gidx,
+      start.scan = start.scan
     )
   }
   
@@ -53,11 +57,15 @@ group.warpgroup = function(
   xs = add.raw.sc(xs)
   if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
 
+  tryCatch(redisIncrBy("countTotal", length(xs@groupidx)), error=function(e) NULL)
+  
   groups = foreach(
     params = iter.gwparams(xs, xr.l, sc.max.drift, ppm.max.drift),
-    .packages = c("warpgroup", "dtw", "igraph")
+    .packages = c("warpgroup", "dtw", "igraph"),
+    .errorhandling = "pass",
+    .noexport = c("xr.l")
     ) %dopar% {
-      tryCatch(redisIncrBy("count", 1), error=function(e) NULL)
+      tryCatch(redisDecrBy("countTotal", 1), error=function(e) NULL)
       
       groups = tryCatch(
         {
@@ -71,6 +79,8 @@ group.warpgroup = function(
           )
           
           llply(groups, function(x) {
+            x[,c("sc", "scmin", "scmax")] = x[,c("sc", "scmin", "scmax")] + params$start.scan
+            
             cbind(x, pn = params$gidx[x[,"n"]])
           })
           
@@ -87,8 +97,10 @@ group.warpgroup = function(
 }
 
 
-warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
+warpgroupsToXs = function(xs, groups, xr.l=NULL, ppm.padding=1) {
   cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
+  
+  if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
   
   group.l = unlist(groups, F)
   bad.gs = unique(c(
@@ -119,7 +131,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
 }
 
 
-integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
+integrate.simple = function(g, xs, xr.l, ppm.padding = 100) {
   x = xs@peaks[g[,"pn"],,drop=F]
   
   mzrange.g = c(
@@ -134,10 +146,10 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
     if (is.na(p["mzmin"]))  {
       mzrange = mzrange.g
     } else {
-      mzrange = c(
+      mzrange = unname(c(
         p["mzmin"] - p["mzmin"] * ppm.padding / 1E6, 
         p["mzmax"] + p["mzmin"] * ppm.padding / 1E6
-        )
+        ))
     }
     
     scanrange = as.numeric(floor(c(pg["scmin"], pg["scmax"])))
@@ -174,15 +186,15 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 1) {
   })
 }
 
-plotGroup.xs = function(i, xs, xr.l) {
+plotGroup.xs = function(i, xs, xr.l, sc.pad = 20) {
   g = xs@groupidx[[i]]
   ps = xs@peaks[g,,drop=F]
   
-  scan.range = c(floor(min(ps[,"scmin"], na.rm=T)), ceiling(max(ps[,"scmax"], na.rm=T)))
+  scan.range = c(floor(min(ps[,"scmin"], na.rm=T))-sc.pad, ceiling(max(ps[,"scmax"], na.rm=T))+sc.pad)
   eic.mat = matrix(numeric(), ncol = nrow(ps), nrow = scan.range[2]-scan.range[1]+1)
   
   for (j in seq(ps[,1])) {
-    mz.range = unname(c(ps[j,"mzmin.fill"], ps[j,"mzmax.fill"]))
+    mz.range = unname(c(ps[j,"mzmin"], ps[j,"mzmax"]))
     eic.mat[,j] = rawEIC(xr.l[[ps[j,"sample"]]], mzrange = mz.range, scanrange = scan.range)$intensity 
   }
   
@@ -192,8 +204,8 @@ plotGroup.xs = function(i, xs, xr.l) {
   
   annos = data.frame(ps)
   annos[,"n"] = seq(annos[,1])
-  colnames(annos)[1:4] = c("peak","scwm", "scmax", "scmin")
-  annos[,2:4] = annos[,2:4] - min(scan.range)
+  colnames(annos)[c(9, 11, 12, 13)] = c("peak","scwm", "scmax", "scmin")
+  annos[,c(11, 12, 13)] = annos[,c(11, 12, 13)] - min(scan.range)
   
   ggplot() + 
     geom_path(data = plot.me, aes(y=int, x= scan, colour=peak)) + 
