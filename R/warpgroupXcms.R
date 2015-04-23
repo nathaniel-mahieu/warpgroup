@@ -4,7 +4,7 @@ iter.gwparams = function(xs, xr.l, sc.max.drift, ppm.max.drift) {
   nextEl = function() {
     gidx <- nextElem(it)  # throws "StopIteration"
     
-    ps = xs@peaks[gidx,,drop=F] 
+    ps = xs@peaks[gidx,,drop=F]
     
     maxscan = min(sapply(xr.l, function(x) { length(x@scantime) }))
     
@@ -46,16 +46,20 @@ iter.gwparams = function(xs, xr.l, sc.max.drift, ppm.max.drift) {
 
 group.warpgroup = function(
   xs,
-  xr.l=NULL,
+  xr.l,
   sc.max.drift, 
   ppm.max.drift, 
   sc.aligned.lim,
-  output.groups=F
+  output.groups=F,
+  sc.aligned.factor = 1,
+  detailed.groupinfo = F,
+  min.peaks = 1
 ) { #Handles parallelization
   cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.\n")
   
+  xs@peaks = xs@peaks[,-which(colnames(xs@peaks) %in% c("sc", "scmin", "scmax")),drop=F]
   xs = add.raw.sc(xs)
-  if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
+  #if (is.null(xr.l)) xr.l = llply(xs@filepaths, xcmsRaw, profstep=0)
 
   tryCatch(redisIncrBy("countTotal", length(xs@groupidx)), error=function(e) NULL)
   
@@ -63,7 +67,8 @@ group.warpgroup = function(
     params = iter.gwparams(xs, xr.l, sc.max.drift, ppm.max.drift),
     .packages = c("warpgroup", "dtw", "igraph"),
     .errorhandling = "pass",
-    .noexport = c("xr.l")
+    .noexport = c("xr.l"),
+    .inorder=T
     ) %dopar% {
       tryCatch(redisDecrBy("countTotal", 1), error=function(e) NULL)
       
@@ -75,10 +80,13 @@ group.warpgroup = function(
             eic.mat.s = params$eic.mat.s,
             
             sc.max.drift,
-            sc.aligned.lim
+            sc.aligned.lim,
+            sc.aligned.factor,
+            detailed.groupinfo,
+            min.peaks
           )
           
-          llply(groups, function(x) {
+          groups = llply(groups, function(x) {
             x[,c("sc", "scmin", "scmax")] = x[,c("sc", "scmin", "scmax")] + params$start.scan
             
             cbind(x, pn = params$gidx[x[,"n"]])
@@ -104,8 +112,7 @@ warpgroupsToXs = function(xs, groups, xr.l=NULL, ppm.padding=1) {
   
   group.l = unlist(groups, F)
   bad.gs = unique(c(
-    which(!sapply(group.l, is.matrix)),
-    which(sapply(group.l, function(x) { any(is.na(x[,"sample"])) }))
+    which(!sapply(group.l, is.matrix))
   ))
   if (length(bad.gs) > 0) warning(paste(length(bad.gs), "groups were removed due to errors."))
   for (bg in rev(bad.gs)) group.l[[bg]] = NULL
@@ -186,7 +193,7 @@ integrate.simple = function(g, xs, xr.l, ppm.padding = 100) {
   })
 }
 
-plotGroup.xs = function(i, xs, xr.l, sc.pad = 20) {
+plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0) {
   g = xs@groupidx[[i]]
   ps = xs@peaks[g,,drop=F]
   
@@ -194,7 +201,7 @@ plotGroup.xs = function(i, xs, xr.l, sc.pad = 20) {
   eic.mat = matrix(numeric(), ncol = nrow(ps), nrow = scan.range[2]-scan.range[1]+1)
   
   for (j in seq(ps[,1])) {
-    mz.range = unname(c(ps[j,"mzmin"], ps[j,"mzmax"]))
+    mz.range = unname(c(ps[j,"mzmin"]-mz.pad, ps[j,"mzmax"]+mz.pad))
     eic.mat[,j] = rawEIC(xr.l[[ps[j,"sample"]]], mzrange = mz.range, scanrange = scan.range)$intensity 
   }
   

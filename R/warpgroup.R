@@ -2,8 +2,13 @@ warpgroup = function(
   ps, # sc, scmin, scmax, sample
   eic.mat.s,
   sc.max.drift,
-  sc.aligned.lim
+  sc.aligned.lim,
+  sc.aligned.factor = 1,
+  detailed.groupinfo = F,
+  min.peaks = 1
 ) {
+  if (nrow(ps) < min.peaks) stop("Less peaks in starting group than min.peaks.")
+  
   ps = cbind(ps, n=1:nrow(ps))
   
   #Find warped alignment between sample summed EICs
@@ -30,20 +35,46 @@ warpgroup = function(
   #Define Grouping based on alignments
   if (nrow(ps) < 2) {
     cm.mem = c("1" = 1)
+    g.characteristics.l = list(matrix(NA, ncol=5, nrow=1, dimnames = list(NULL, c("group.degree", "group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))))
   } else {
-    match.mat = aaply(abs(sc.warps.diffs), c(1,2), 
-                      function(sc.ds) (
-                        sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
-                          sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
-                          sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
-                      )
+    match.mat = aaply(abs(sc.warps.diffs), c(1,2), function(sc.ds) (
+      sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
+        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
+        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
+      )
     )
-    topology = which(match.mat, arr.ind=T)
-    g2 = graph.data.frame(topology, directed=F)
-    cm = walktrap.community(g2)
+
+    match.wts = aaply(abs(sc.warps.diffs), c(1,2), 
+      function(sc.ds) 1/(1.1^((sc.ds[2] + sc.ds[3])/sc.aligned.factor))
+      )
+
+    topology = which(match.mat, arr.ind=T); top.wts = topology
+    top.wts = cbind(topology, weight = match.wts[topology])
+
+    g = graph.data.frame(top.wts, directed=F)
+    cm = walktrap.community(g)
     cm.mem = membership(cm)
+    #plot(cm, g)
+
+    
     
     g.l = split(cm.mem, cm.mem)
+    
+    g.characteristics.l = llply(unique(cm.mem), function(g) {
+      g = g.l[[as.character(g)]]
+      
+      topo2 = subset(data.frame(top.wts), 
+                     X1 %in% names(g) & X2 %in% names(g))
+      g2 = graph.data.frame(topo2, directed=F)
+      
+      cbind(
+        group.degree = round(degree(g2)/(vcount(g2)*2),2),
+        group.density = graph.density(g2),
+        group.eccentricity = eccentricity(g2),
+        group.closeness = closeness(g2),
+        group.parent.modularity = modularity(cm, g)
+      )
+    })
   }
   
   
@@ -100,9 +131,9 @@ warpgroup = function(
   
   
   # Return Data
-  llply(seq(cb.l), function(i) {
+  groups = llply(seq(cb.l), function(i) {
     cb = cb.l[[i]]
-    cb.r = rbind(cb, n = as.numeric(colnames(cb)), sample = ps[as.numeric(colnames(cb)),"sample"])
+    cb.r = rbind(cb, n = as.numeric(colnames(cb)), sample = ps[as.numeric(colnames(cb)),"sample"], aperm(g.characteristics.l[[i]]))    
     peaks = cb.r
     
     mb = mb.l[[i]]
@@ -114,9 +145,16 @@ warpgroup = function(
       peaks = as.matrix(peaks[,-1])
     }
     
-    peaks = aperm(peaks)[,c("n", "sample", "sc", "scmin", "scmax")]
+    desired.columns = c("n", "sample", "sc", "scmin", "scmax", "group.degree")
+    if(detailed.groupinfo) desired.columns = c(desired.columns, c("group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))
+    
+    peaks = aperm(peaks)[,desired.columns]
     rownames(peaks) = NULL
     
     peaks[order(peaks[,"sample"]),]
   })
+  
+  groups[
+    which(sapply(groups, function(x) { sum(!is.na(x[!duplicated(x[,"sample"]),"n"])) >= min.peaks }))
+    ]
 }
