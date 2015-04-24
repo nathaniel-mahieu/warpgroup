@@ -10,3 +10,5 @@
 # RStudio files
 .Rproj.user/
 inst/watchDoRedis.R
+warpgroup.Rproj
+*.Rbuildignore
