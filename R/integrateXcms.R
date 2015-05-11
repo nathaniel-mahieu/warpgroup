@@ -3,7 +3,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
   
   group.l = unlist(groups, F)
   bad.gs = unique(c(
-    which(!sapply(group.l, is.matrix))
+    which(!sapply(group.l, is.matrix) | is.null(sapply(group.l, nrow)))
   ))
   if (length(bad.gs) > 0) warning(paste(length(bad.gs), "groups were removed due to errors."))
   for (bg in rev(bad.gs)) group.l[[bg]] = NULL
@@ -14,12 +14,9 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
     .noexport = c("xr.l"),
     .inorder=T
   ) %do% {
-    ints = integrate.simple(
-      scanmat.l = params$scanmat,
-      eic.l = params$eic.l
-    )
+    ints = integrate.simple(params)
     
-    cbind(params$g, ints)
+    cbind(params[[2]], ints)
   }
   
   pt.l = lapply(seq(pt.l), function(i) cbind(pt.l[[i]], new.gidx = i))
@@ -45,7 +42,9 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
       max(x[,"mzmax"], na.rm=T) + max(x[,"mzmax"], na.rm=T) * ppm.padding / 1E6
     )
     
-    foreach(i=seq(nrow(g))) %do% {
+    
+    
+    pdata = foreach(i=seq(nrow(g))) %do% {
       p = x[i,]
       pg = g[i,]
       
@@ -60,7 +59,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
       maxscan = length(xr.l[[pg["sample"]]]@scantime)
       scanrange[scanrange > maxscan] = maxscan 
       eic = rawEIC(xr.l[[pg["sample"]]], mzrange = mzrange, scanrange = scanrange)      
-      eic = cbind(eic, rt=xs@rt$corrected[eic$scan])
+      eic = cbind(do.call("cbind", eic), rt=xs@rt$corrected[[pg["sample"]]][eic$scan])
       
       scans = foreach(i=scanrange[1]:scanrange[2]) %do% getScan(xr.l[[pg["sample"]]], i, mzrange)
       scanmat = do.call("rbind", scans)
@@ -68,9 +67,15 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
       list(
         eic = eic,
         scanmat = scanmat,
-        g = g
+        mzrange = mzrange
       )
     }
+    
+    list(
+      pdata,
+      g
+      )
+    
   }
   
   obj <- list(nextElem=nextEl)
@@ -78,35 +83,35 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
   obj
 }
 
-integrate.simple = function(scanmat.l, eic.l) {
-  int.mat = matrix(numeric(), nrow=length(scanmat.l), ncol=8, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax")))
+integrate.simple = function(params) {
+  int.mat = matrix(numeric(), nrow=length(params), ncol=9, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax")))
   
-  foreach(i=seq(scanmat.l)) %do% {
-    scan.mat = scanmat.l[[i]]
-    eic = eic.l[[i]]
+  for (i in seq(params[[1]])) {
+    scan.mat = params[[1]][[i]]$scanmat
+    eic = params[[1]][[i]]$eic
     
-    min = quantile(scan.mat[,"intensity"], .5)
+    min = quantile(scan.mat[,"intensity"], .5) * .9
     mz = mean(scan.mat[scan.mat[,"intensity"] > c(min), "mz"])
     
-    weightedi = diff(eic$rt) * sapply(
-      2:length(eic$intensity), function(x){
-        mean(eic$intensity[c(x - 1, x)])
+    weightedi = diff(eic[,"rt"]) * sapply(
+      2:length(eic[,"intensity"]), function(x){
+        mean(eic[,"intensity"][c(x - 1, x)])
       })
     into = sum(weightedi)
-    rtwmean = sum(weightedi * eic$rt[-1]) / into
+    rtwmean = sum(weightedi * eic[,"rt"][-1]) / into
     
-    rt.half = mean(eic$rt[1], eic$rt[length(eic$rt)])
+    rt.half = mean(c(eic[,"rt"][1], eic[,"rt"][length(eic[,"rt"])]))
     
     int.mat[i,] = c(
       mz,
       rtwmean,
       rt.half,
       into,
-      max(eic$intensity),
-      mzrange[[1]],
-      mzrange[[2]],
-      min(rts),
-      max(rts)
+      max(eic[,"intensity"]),
+      params[[1]][[i]]$mzrange[[1]],
+      params[[1]][[i]]$mzrange[[2]],
+      min(eic[,"rt"]),
+      max(eic[,"rt"])
     )
   }
   
