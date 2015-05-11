@@ -12,3 +12,4 @@
 inst/watchDoRedis.R
 warpgroup.Rproj
 *.Rbuildignore
+inst/warpgroup_examples.html
