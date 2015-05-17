@@ -7,5 +7,5 @@ Author: Nathaniel Guy Mahieu <nathaniel.mahieu@wustl.edu>
 Maintainer: Nathaniel Guy Mahieu <nathaniel.mahieu@wustl.edu>
 License: GPL-3
 Depends: dtw, igraph, plyr, reshape2, miscTools, foreach, iterators
-Suggests: doParallel, foreach
+Suggests: doParallel
 Enhances: xcms

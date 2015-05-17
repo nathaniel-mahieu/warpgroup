@@ -1,4 +1,4 @@
-plot.warpgroup = function(group, eic.mat.s, scan.start) {
+plot.warpgroupx = function(group, eic.mat.s, scan.start) {
   ps = group 
   
   long.plot = melt(eic.mat.s)
@@ -16,7 +16,7 @@ plot.warpgroup = function(group, eic.mat.s, scan.start) {
 }
 
 
-plot.warpgroup = function(group, xs, xr.l, sc.pad = 20, mz.pad = 0.001) {
+plot.warpgroup = function(group, xs, xr.l, sc.pad = 20, mz.pad = 0.001, type=1) {
   g = group
   ps = xs@peaks[g[,"pn"],,drop=F]
   ps[,c("sc","scmin","scmax","sample")] = g[,c("sc","scmin","scmax","sample")]
@@ -24,65 +24,75 @@ plot.warpgroup = function(group, xs, xr.l, sc.pad = 20, mz.pad = 0.001) {
   eic.mat = makeEicMat(ps, xr.l, sc.pad, mz.pad)
 
   g[,c("sc", "scmin", "scmax")] = g[,c("sc", "scmin", "scmax")] - min(g[,"scmin"]) + 1 + sc.pad
-  plot_peaks_bounds(eic.mat, g)
+  plot_peaks_bounds(eic.mat, g, type=type)
 }
 
 
-plot_peaks_bounds = function(eic.mat.s, bounds) {
-  eic.mat.s = apply(eic.mat.s, 2, function(x) { x/max(x) })
-  eic.mat.s = sapply(seq(ncol(eic.mat.s)), function(i) { eic.mat.s[,i]+1.1*(i-1) })
-  
-  df = melt(eic.mat.s)
-  colnames(df) = c("Scan", "Sample", "Intensity")
-  
-  int = array(logical(), dim=dim(eic.mat.s)); int[] = F
-  for (r in seq(nrow(bounds))) int[floor(bounds[r,"scmin"]):floor(bounds[r,"scmax"]), bounds[r,"sample"]] = T
-  df.int = melt(int)
-  colnames(df.int) = c("Scan", "Sample", "Integrated")
-  
-  df.int = data.frame(df, Integrated = melt(int)[,3])
-  
-  df.bounds = melt(data.frame(bounds), id.vars = "sample", measure.vars=c("scmin", "scmax"))
-  colnames(df.bounds) = c("Sample", "Bound", "Scan")
-  Intensity = aaply(as.matrix(df.bounds[,c("Sample", "Scan")]), 1, function(x) {
-    eic.mat.s[x["Scan"],x["Sample"]]
+plot_peaks_bounds = function(eic.mat.s, bounds, type=1) {
+  if (type==1) {
+    eic.mat.s = apply(eic.mat.s, 2, function(x) { x/max(x) })
+    eic.mat.s = sapply(seq(ncol(eic.mat.s)), function(i) { eic.mat.s[,i]+1.1*(i-1) })
+    
+    df = melt(eic.mat.s)
+    colnames(df) = c("Scan", "Sample", "Intensity")
+    
+    int = array(logical(), dim=dim(eic.mat.s)); int[] = F
+    for (r in seq(nrow(bounds))) int[floor(bounds[r,"scmin"]):floor(bounds[r,"scmax"]), bounds[r,"sample"]] = T
+    df.int = data.frame(df, Integrated = melt(int)[,3])
+    
+    df.bounds = melt(data.frame(bounds), id.vars = "sample", measure.vars=c("scmin", "scmax"))
+    colnames(df.bounds) = c("Sample", "Bound", "Scan")
+    Intensity = aaply(as.matrix(df.bounds[,c("Sample", "Scan")]), 1, function(x) {
+      eic.mat.s[x["Scan"],x["Sample"]]
+      })
+    df.bounds = cbind(df.bounds, Intensity)
+    
+    ggplot(df.int, aes(y = Intensity, x = Scan, group=factor(Sample))) + 
+      geom_line(colour="#a0a0a0") +
+      geom_line(data=subset(df.int, Integrated==T), mapping=aes(group=factor(Sample)), colour="#D63647", size=1) + 
+      geom_point(data=df.bounds, colour="#D63647", size=4) +
+      theme(
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major=element_line(colour="#F2EBEC")
+        )
+  } else {
+    eic.mat.s = apply(eic.mat.s, 2, function(x) { x/max(x) })
+    
+    df = melt(eic.mat.s)
+    colnames(df) = c("Scan", "Sample", "Intensity")
+    
+    int = array(logical(), dim=c(nrow(eic.mat.s), nrow(bounds))); int[] = F
+    for (r in seq(nrow(bounds))) int[floor(bounds[r,"scmin"]):floor(bounds[r,"scmax"]), bounds[r,"sample"]] = T
+    df.int = data.frame(df, Integrated = melt(int)[,3])
+    
+    df.bounds = melt(data.frame(bounds), id.vars = "sample", measure.vars=c("scmin", "scmax"))
+    colnames(df.bounds) = c("Sample", "Bound", "Scan")
+    Intensity = aaply(as.matrix(df.bounds[,c("Sample", "Scan")]), 1, function(x) {
+      eic.mat.s[x["Scan"],x["Sample"]]
     })
-  df.bounds = cbind(df.bounds, Intensity)
-  
-  if(F) {
-  ggplot(df.int, aes(y = Intensity, x = Scan)) + 
-    geom_line() +
-    geom_line(data=subset(df.int, Integrated==T), mapping=aes(colour="red")) +
-    geom_point(data=df.bounds, aes(y=1)) + 
-    facet_wrap(~Sample, ncol=2, scales="free_y") +
-    theme(legend.position="none", axis.text.y=element_blank(), axis.ticks=element_blank()) +
-    theme(#axis.line=element_blank(),
-      axis.text.x=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks=element_blank(),
-      legend.position="none",
-      panel.background=element_blank(),
-      panel.border=element_blank(),
-      panel.grid.major=element_blank(),
-      panel.grid.minor=element_blank(),
-      plot.background=element_blank())
-}
-  
-  ggplot(df.int, aes(y = Intensity, x = Scan, group=factor(Sample))) + 
-    geom_line(colour="#a0a0a0") +
-    geom_line(data=subset(df.int, Integrated==T), mapping=aes(group=factor(Sample)), colour="#D63647", size=1) + 
-    geom_point(data=df.bounds, colour="#D63647", size=4) +
-    theme(
-      axis.text.y=element_blank(),
-      axis.ticks=element_blank(),
-      legend.position="none",
-      panel.background=element_blank(),
-      panel.grid.minor=element_blank(),
-      panel.grid.major=element_line(colour="#F2EBEC")
-      )
+    df.bounds = cbind(df.bounds, Intensity)
+    
+    
+    ggplot(df.int, aes(y = Intensity, x = Scan, group=factor(Sample))) + 
+      geom_line(colour="#a0a0a0") +
+      geom_line(data=subset(df.int, Integrated==T), colour="#D63647", size=1) + 
+      geom_point(data=df.bounds, colour="#D63647", size=4) +
+      theme(
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major=element_line(colour="#F2EBEC")
+      ) + facet_wrap(~Sample)
+  }
 }
 
-plot.warpgroup = function(prepath=".", ps, cm.mem, eic.mat, eic.mat.s, p.sc.params) {
+plot.warpgroupx = function(prepath=".", ps, cm.mem, eic.mat, eic.mat.s, p.sc.params) {
   
   foo = merge(ps, data.frame(cm.mem, n=names(cm.mem)), by = "n", all=T)    
   

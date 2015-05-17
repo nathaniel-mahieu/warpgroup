@@ -1,14 +1,16 @@
-plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0) {
+plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0, type=1) {
   g = xs@groupidx[[i]]
   ps = xs@peaks[g,,drop=F]
   
   ps = ps[order(ps[,"sample"]),]
   
   eic.mat = makeEicMat(ps, xr.l, sc.pad = sc.pad, mz.pad = mz.pad)
+  scan.range = range(c(ps[,"scmin"]))
   
-  bounds = ps[,c("scmin","scmax", "sample")]; bounds[,1:2] = bounds[,1:2] - min(scan.range) +1
-
-  plot_peaks_bounds(eic.mat, na.omit(bounds))
+  bounds = ps[,c("scmin","scmax", "sample")]; bounds[,1:2] = bounds[,1:2] - min(scan.range) +1 + sc.pad
+  bounds[,"sample"] = seq(nrow(bounds))
+  
+  plot_peaks_bounds(eic.mat, na.omit(bounds), type=type)
 }
 
 makeEicMat = function(ps, xr.l, sc.pad = 20, mz.pad = 0) {
