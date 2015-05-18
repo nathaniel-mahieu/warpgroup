@@ -5,15 +5,18 @@ warpgroup = function(
   sc.aligned.lim,
   sc.aligned.factor = 1,
   detailed.groupinfo = F,
-  min.peaks = 1
+  min.peaks = 1,
+  tw = "dtw",
+  pct.pad = 0.1
 ) {
   if (nrow(ps) < min.peaks) stop("Less peaks in starting group than min.peaks.")
   
   ps = cbind(ps, n=1:nrow(ps))
   
   #Find warped alignment between sample summed EICs
-  dtw.step = buildStepMat(eic.mat.s) #dtw.mat = buildDtwMat(eic.mat.s)
-  
+  tw.l = buildTwMat(eic.mat.s, tw = tw, pct.pad = pct.pad)
+  tw.step = tw.l$stepmat 
+  tw.mat = tw.l$twmat
   
   #Find predicted scan end and begin in all warp spaces.
   sc.warps = array(numeric(), dim = c(nrow(ps), nrow(ps), 3), dimnames=list(NULL,NULL, c("sc", "scmin", "scmax")))
@@ -22,7 +25,7 @@ warpgroup = function(
     a = ps[i,];
     for(j in seq_along(ps[,1])) { 
       b= ps[j,];
-      a.sc.a = dtw.step[[a["sample"]]][[b["sample"]]](
+      a.sc.a = tw.step[[a["sample"]]][[b["sample"]]](
         a[c("sc", "scmin", "scmax")]
       )
       b.sc.a = b[c("sc", "scmin", "scmax")]
@@ -54,10 +57,6 @@ warpgroup = function(
     g = graph.data.frame(top.wts, directed=F)
     cm = walktrap.community(g)
     cm.mem = membership(cm)
-    #plot(cm, g)
-
-    
-    
     g.l = split(cm.mem, cm.mem)
     
     g.characteristics.l = llply(unique(cm.mem), function(g) {
@@ -114,7 +113,7 @@ warpgroup = function(
     mb = aperm(
       aaply(missing, 1, .drop=F, function(j) {
         aaply(colnames(cb), 1, .drop=F, function(i) {
-          dtw.step[[ps[as.numeric(i),"sample"]]][[j]](
+          tw.step[[ps[as.numeric(i),"sample"]]][[j]](
             cb[,i]
           )
         })
@@ -145,14 +144,40 @@ warpgroup = function(
       peaks = as.matrix(peaks[,-1])
     }
     
-    desired.columns = c("n", "sample", "sc", "scmin", "scmax", "group.degree")
-    if(detailed.groupinfo) desired.columns = c(desired.columns, c("group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))
+    desired.columns = c("n", "sample", "sc", "scmin", "scmax")
+    if(detailed.groupinfo) desired.columns = c(desired.columns, c("group.degree", "group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))
     
     peaks = aperm(peaks)[,desired.columns]
     rownames(peaks) = NULL
     
     peaks[order(peaks[,"sample"]),]
   })
+  
+  if(detailed.groupinfo & tw == "dtw") {
+    groups = llply(groups, function(g) {
+      dist = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
+      dist2 = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
+      
+      for (i in seq(nrow(g))) {
+        for (j in seq(nrow(g))) {
+          p = g[i,]
+          tw =  tw.mat[[p["sample"]]][[g[j,"sample"]]]
+          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.l$npad
+          indices = which.min(abs(tw$index1 - sc[1])):which.min(abs(tw$index1 - sc[2]))
+          d.phi.sub = tw$costMatrix[ cbind(tw$index1[indices], tw$index2[indices]) ]
+          d.sub = tw$localCostMatrix[ cbind(tw$index1[indices], tw$index2[indices]) ]
+          
+          dist[i,j] = (d.phi.sub[length(d.phi.sub)] - d.phi.sub[1]) / length(indices)
+          dist2[i,j] = sum(d.sub) / length(indices)
+        }
+      }
+      
+      diag(dist)= NA
+      diag(dist2)= NA
+      
+      cbind(g, dtw.distortion = round(rowMeans(dist, na.rm=T), 4), warped.distance = round(rowMeans(dist2, na.rm=T), 4))
+      })
+  }
   
   groups[
     which(sapply(groups, function(x) { sum(!is.na(x[!duplicated(x[,"sample"]),"n"])) >= min.peaks }))

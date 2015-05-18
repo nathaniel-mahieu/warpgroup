@@ -1,4 +1,4 @@
-dtwFunc = function(v1, v2, keep=F) {
+dtwFunc = function(v1, v2, keep=T) {
   dtw(
     v1,
     v2,
@@ -37,44 +37,36 @@ prepEicMat = function(eic.mat, n.pad=0) {
   eic.mat
 }
 
-getCorrespondance = function(v1, v2, tw = "dtw", n.pad = 0) {
+getStep = function(a, tw, n.pad) {
   if (tw == "dtw") {
-    dtw = dtwFunc(v1, v2)
-    return(stepfun(
-      dtw$index1[-1] - n.pad,
-      dtw$index2 - n.pad
-    ))
+    return(stepfun(a$index1[-1] - n.pad, a$index2 - n.pad))
   } else if (tw == "ptw") {
-    ptw = ptwFunc(v1, v2)
-    return(stepfun(
-      seq(ptw$warp.fun)[-1],
-      ptw$warp.fun
-      ))
-  } else {
-    stop("Unavailable time warping function selected.")
+    return(stepfun(a$index1[-1] - n.pad, a$index2 - n.pad))
   }
 }
 
-buildDtwMat = function(eic.mat, pct.pad = 0.1, tw="dtw") {
+buildTwMat = function(eic.mat, pct.pad = 0, tw="dtw") {
   n.pad = floor(nrow(eic.mat) * pct.pad)
   eic.mat = prepEicMat(eic.mat, n.pad)
-  n = seq(ncol(eic.mat))
+  n = ncol(eic.mat)
+  cor = list()
+  cor$tw = tw
+  cor$twmat = llply(seq(n), function(x) {vector("list", n) })
+  cor$stepmat = llply(seq(n), function(x) {vector("list", n) })
+  cor$npad = n.pad
   
-  llply(n, function(i) {
-    llply(n, function(j) {
-      dtwFunc(eic.mat[,i], eic.mat[,j])
-    })
-  })
-}
+  if (tw == "dtw") {
+    twFunc = dtwFunc
+  } else if (tw == "ptw") {
+    twFunc = ptwFunc
+  }
+  
+  for (i in seq(n)) {
+    for (j in seq(n)) {
+      cor$twmat[[i]][[j]] = twFunc(eic.mat[,i], eic.mat[,j])
+      cor$stepmat[[i]][[j]] = getStep(cor$twmat[[i]][[j]], cor$tw, cor$npad)
+    }
+  }
 
-buildStepMat = function(eic.mat, pct.pad = 0.1, tw="dtw") {  
-  n.pad = floor(nrow(eic.mat) * pct.pad)
-  eic.mat = prepEicMat(eic.mat, n.pad)
-  n = seq(ncol(eic.mat))
-  
-  llply(n, function(i) {
-    llply(n, function(j) {
-      getCorrespondance(eic.mat[,i], eic.mat[,j], tw="dtw", n.pad)
-    })
-  })
+  cor
 }
