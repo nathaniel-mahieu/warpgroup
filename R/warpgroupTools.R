@@ -37,7 +37,7 @@ prepEicMat = function(eic.mat, n.pad=0) {
   eic.mat
 }
 
-getCorrespondance = function(v1, v2, tw = "dtw") {
+getCorrespondance = function(v1, v2, tw = "dtw", n.pad = 0) {
   if (tw == "dtw") {
     dtw = dtwFunc(v1, v2)
     return(stepfun(
@@ -74,7 +74,7 @@ buildStepMat = function(eic.mat, pct.pad = 0.1, tw="dtw") {
   
   llply(n, function(i) {
     llply(n, function(j) {
-      getCorrespondance(eic.mat[,i], eic.mat[,j], tw="dtw")
+      getCorrespondance(eic.mat[,i], eic.mat[,j], tw="dtw", n.pad)
     })
   })
 }
