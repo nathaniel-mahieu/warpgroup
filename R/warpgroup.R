@@ -60,7 +60,7 @@ warpgroup = function(
     g.characteristics.l = llply(unique(cm.mem), function(g) {
       g = g.l[[as.character(g)]]
       
-      topo2 = subset(data.frame(top.wts), 
+      topo2 = subset(data.frame(top.wts, row.names=NULL), 
                      X1 %in% names(g) & X2 %in% names(g))
       g2 = graph.data.frame(topo2, directed=F)
       
