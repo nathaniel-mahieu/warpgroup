@@ -14,9 +14,7 @@ warpgroup = function(
   ps = cbind(ps, n=1:nrow(ps))
   
   #Find warped alignment between sample summed EICs
-  tw.l = buildTwMat(eic.mat.s, tw = tw, pct.pad = pct.pad)
-  tw.step = tw.l$stepmat 
-  tw.mat = tw.l$twmat
+  tw.l = buildTwList(eic.mat.s, tw = tw, pct.pad = pct.pad)
   
   #Find predicted scan end and begin in all warp spaces.
   sc.warps = array(numeric(), dim = c(nrow(ps), nrow(ps), 3), dimnames=list(NULL,NULL, c("sc", "scmin", "scmax")))
@@ -25,7 +23,7 @@ warpgroup = function(
     a = ps[i,];
     for(j in seq_along(ps[,1])) { 
       b= ps[j,];
-      a.sc.a = tw.step[[a["sample"]]][[b["sample"]]](
+      a.sc.a = tw.l[[a["sample"]]][[b["sample"]]]$step(
         a[c("sc", "scmin", "scmax")]
       )
       b.sc.a = b[c("sc", "scmin", "scmax")]
@@ -113,7 +111,7 @@ warpgroup = function(
     mb = aperm(
       aaply(missing, 1, .drop=F, function(j) {
         aaply(colnames(cb), 1, .drop=F, function(i) {
-          tw.step[[ps[as.numeric(i),"sample"]]][[j]](
+          tw.l[[ps[as.numeric(i),"sample"]]][[j]]$step(
             cb[,i]
           )
         })
@@ -155,27 +153,25 @@ warpgroup = function(
   
   if(detailed.groupinfo & tw == "dtw") {
     groups = llply(groups, function(g) {
-      dist = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
-      dist2 = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
+      d.phi.cum = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
+      d.cum = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
       
       for (i in seq(nrow(g))) {
         for (j in seq(nrow(g))) {
           p = g[i,]
-          tw =  tw.mat[[p["sample"]]][[g[j,"sample"]]]
-          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.l$npad
-          indices = which.min(abs(tw$index1 - sc[1])):which.min(abs(tw$index1 - sc[2]))
-          d.phi.sub = tw$costMatrix[ cbind(tw$index1[indices], tw$index2[indices]) ]
-          d.sub = tw$localCostMatrix[ cbind(tw$index1[indices], tw$index2[indices]) ]
+          tw.m =  tw.l[[g[i,"sample"]]][[g[j,"sample"]]]
+          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.m$npad
+          indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
           
-          dist[i,j] = (d.phi.sub[length(d.phi.sub)] - d.phi.sub[1]) / length(indices)
-          dist2[i,j] = sum(d.sub) / length(indices)
+          d.phi.cum[i,j] = (tw.m$d.phi[tail(indices, n=1)] - tw.m$d.phi[1]) / length(indices)
+          d.cum[i,j] = sum(tw.m$d[indices]) / length(indices)
         }
       }
       
-      diag(dist)= NA
-      diag(dist2)= NA
+      diag(d.phi.cum)= NA
+      diag(d.cum)= NA
       
-      cbind(g, dtw.distortion = round(rowMeans(dist, na.rm=T), 4), warped.distance = round(rowMeans(dist2, na.rm=T), 4))
+      cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T))
       })
   }
   

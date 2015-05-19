@@ -45,15 +45,11 @@ getStep = function(a, tw, n.pad) {
   }
 }
 
-buildTwMat = function(eic.mat, pct.pad = 0, tw="dtw") {
+buildTwList = function(eic.mat, pct.pad = 0, tw="dtw") {
   n.pad = floor(nrow(eic.mat) * pct.pad)
   eic.mat = prepEicMat(eic.mat, n.pad)
   n = ncol(eic.mat)
-  cor = list()
-  cor$tw = tw
-  cor$twmat = llply(seq(n), function(x) {vector("list", n) })
-  cor$stepmat = llply(seq(n), function(x) {vector("list", n) })
-  cor$npad = n.pad
+  tw.l = rep(list(vector("list",n)), n)
   
   if (tw == "dtw") {
     twFunc = dtwFunc
@@ -63,10 +59,20 @@ buildTwMat = function(eic.mat, pct.pad = 0, tw="dtw") {
   
   for (i in seq(n)) {
     for (j in seq(n)) {
-      cor$twmat[[i]][[j]] = twFunc(eic.mat[,i], eic.mat[,j])
-      cor$stepmat[[i]][[j]] = getStep(cor$twmat[[i]][[j]], cor$tw, cor$npad)
+      #cor$twmat[[i]][[j]] = twFunc(eic.mat[,i], eic.mat[,j])
+      warp = twFunc(eic.mat[,i], eic.mat[,j], keep=T)
+      
+      data = list()
+      data$step = getStep(warp, tw, n.pad)
+      data$path = cbind(warp$index1, warp$index2)
+      data$d.phi = warp$costMatrix[ data$path ]
+      data$d = warp$localCostMatrix[ data$path ]
+      data$tw = tw
+      data$npad = n.pad
+      
+      tw.l[[i]][[j]] = data
     }
   }
 
-  cor
+  tw.l
 }
