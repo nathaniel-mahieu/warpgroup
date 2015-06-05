@@ -72,6 +72,7 @@ buildTwList = function(eic.mat, pct.pad = 0, tw="dtw") {
       
       tw.l[[i]][[j]] = data
     }
+    gc()
   }
 
   tw.l

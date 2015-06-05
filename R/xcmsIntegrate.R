@@ -1,4 +1,4 @@
-warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
+warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) {
   cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
   
   group.l = unlist(groups, F)
@@ -9,7 +9,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
   for (bg in rev(bad.gs)) group.l[[bg]] = NULL
   
   pt.l = foreach(
-    params = iter.integrateparams(group.l, xs, xr.l, ppm.padding),
+    params = iter.integrateparams(group.l, xs, xr.l, ppm.padding, min.ppm.width),
     .errorhandling = "pass",
     .noexport = c("xr.l"),
     .inorder=T
@@ -27,7 +27,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=1) {
   return(xs)
 }
 
-iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
+iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 0) {
   it <- iter(group.l)
   
   nextEl = function() {
@@ -42,7 +42,13 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
       max(x[,"mzmax"], na.rm=T) + max(x[,"mzmax"], na.rm=T) * ppm.padding / 1E6
     )
     
-    
+    mmzr = mean(mzrange.g)
+    if (diff(mzrange.g)/mmzr * 1E6 < min.ppm.width) {
+      mzrange.g = c(
+        mmzr - mmzr * min.ppm.width/2/1E6,
+        mmzr + mmzr * min.ppm.width/2/1E6
+        )
+    }
     
     pdata = foreach(i=seq(nrow(g))) %do% {
       p = x[i,]
@@ -84,7 +90,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding) {
 }
 
 integrate.simple = function(params) {
-  int.mat = matrix(numeric(), nrow=length(params), ncol=9, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax")))
+  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=9, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax")))
   
   for (i in seq(params[[1]])) {
     scan.mat = params[[1]][[i]]$scanmat
