@@ -14,10 +14,12 @@ plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0, type=1) {
 }
 
 makeEicMat = function(ps, xr.l, sc.pad = 20, mz.pad = 0) {
+  #sc.start = min(ps[,"scmin"], na.rm=T) + 1
   
-  sc.start = min(ps[,"scmin"], na.rm=T) + 1
+  maxscan = max(sapply(xr.l, function(x) { length(x@scantime) }))
   
   scan.range = c(floor(min(ps[,"scmin"], na.rm=T))-sc.pad, ceiling(max(ps[,"scmax"], na.rm=T))+sc.pad)
+  scan.range[scan.range < 1] = 1; scan.range[scan.range > maxscan] = maxscan
   eic.mat = matrix(numeric(), ncol = nrow(ps), nrow = scan.range[2]-scan.range[1]+1)
   
   mz.rangeg = unname(c(min(ps[,"mzmin"]-mz.pad, na.rm=T), max(ps[,"mzmax"]+mz.pad, na.rm=T)))
