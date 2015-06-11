@@ -43,7 +43,12 @@ wg.bounds = warpgroup(peak.bounds, eic.mat, sc.max.drift = 0, sc.aligned.lim = 8
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))
 ```
 
-![Peaks after to warpgrouping](inst/figure/unnamed-chunk-14-1.png)
+![Peaks after to warpgrouping 1](inst/figure/unnamed-chunk-14-1.png)
 
-Warpgroup grouped the peaks into three groups, each describing a distinct chromatographic region and the same region between samples.
+![Peaks after to warpgrouping 2](inst/figure/unnamed-chunk-14-2.png)
+
+![Peaks after to warpgrouping 3](inst/figure/unnamed-chunk-14-3.png)
+
+
+Warpgroup generated three peak groups, each describing a distinct chromatographic region and the same region between samples.
 
