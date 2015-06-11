@@ -22,7 +22,7 @@ warpgroup.bounds = warpgroup(peak.bounds, eic.matrix, sc.aligned.lim = 8)
 ```
 
 ##Example
-Toy data and more examples can be found in the /inst directory.
+Toy data and more examples can be found in the [/inst directory](/inst).
 
 This is an extreme example, data this unreliable probably shouldn't be trusted, but it provides a nice challenge and conceptual overview of the algorithm.
 
