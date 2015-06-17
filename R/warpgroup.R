@@ -1,7 +1,6 @@
 warpgroup = function(
   ps, # sc, scmin, scmax, sample
   eic.mat.s,
-  sc.max.drift,
   sc.aligned.lim,
   sc.aligned.factor = 1,
   detailed.groupinfo = F,
