@@ -52,9 +52,9 @@ buildTwList = function(eic.mat, pct.pad = 0, tw="dtw") {
   tw.l = rep(list(vector("list",n)), n)
   
   if (tw == "dtw") {
-    twFunc = dtwFunc
+    twFunc <-- dtwFunc
   } else if (tw == "ptw") {
-    twFunc = ptwFunc
+    twFunc <-- ptwFunc
   }
   
   for (i in seq(n)) {

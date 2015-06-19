@@ -35,7 +35,8 @@ group.warpgroup = function(
     sc.aligned.lim,
     sc.aligned.factor,
     detailed.groupinfo,
-    min.peaks
+    min.peaks,
+    tw="dtw"
   )
   
   groups = llply(groups, function(x) {
