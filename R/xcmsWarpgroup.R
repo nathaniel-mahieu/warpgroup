@@ -105,7 +105,7 @@ iter.gwparams = function(xs, xr.l, sc.max.drift, ppm.max.drift) {
 
 
 add.raw.sc = function(xs) {
-  xs@peaks = xs@peaks[,-which(colnames(xs@peaks) %in% c("sc", "scmin", "scmax")),drop=F]
+  xs@peaks = xs@peaks[,!colnames(xs@peaks) %in% c("sc", "scmin", "scmax"),drop=F]
   
   rt.scans = matrix(NA, ncol=3, nrow=nrow(xs@peaks), dimnames=list(NULL, c("sc", "scmin", "scmax")))
   
