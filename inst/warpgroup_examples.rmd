@@ -1,4 +1,4 @@
-title: "Warpgroup Examples"
+# Warpgroup Examples
 
 This is a set of example Warpgroup uses, each illustrating a different feature of the algorithm.
 
