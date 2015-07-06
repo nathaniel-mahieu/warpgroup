@@ -47,7 +47,7 @@ xs.warpgroup = group.warpgroup(xs.rg, xr.l = xr.l, sc.max.drift = 20, ppm.max.dr
 ```
 
 ## Example
-Toy data and more examples can be found in the [/inst directory](/inst).
+Toy data and more examples can be found in the [/inst directory](/inst/warpgroup_examples.md).
 
 This is an extreme example, data this unreliable probably shouldn't be trusted, but it provides a nice challenge and conceptual overview of the algorithm.
 
