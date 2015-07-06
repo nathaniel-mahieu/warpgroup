@@ -57,7 +57,7 @@ data(example_5)
 plot_peaks_bounds(eic.mat, peak.bounds)
 ```
 
-![Peaks prior to warpgrouping](inst/figure/unnamed-chunk-13-1.png)
+![Peaks prior to warpgrouping](inst/figure/extreme_example-1.png)
 
 We can clearly see two peaks in most samples.  There is a large retention time drift.  There is also a varying degree of merging between the two peaks.  In some samples two distinct peaks were detected, in others a single peak was detected.
 
@@ -68,11 +68,11 @@ wg.bounds = warpgroup(peak.bounds, eic.mat, sc.max.drift = 0, sc.aligned.lim = 8
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))
 ```
 
-![Peaks after to warpgrouping 1](inst/figure/unnamed-chunk-14-1.png)
+![Peaks after to warpgrouping 1](inst/figure/extreme_example_fixed-1.png)
 
-![Peaks after to warpgrouping 2](inst/figure/unnamed-chunk-14-2.png)
+![Peaks after to warpgrouping 2](inst/figure/extreme_example_fixed-2.png)
 
-![Peaks after to warpgrouping 3](inst/figure/unnamed-chunk-14-3.png)
+![Peaks after to warpgrouping 3](inst/figure/extreme_example_fixed-3.png)
 
 
 Warpgroup generated three peak groups, each describing a distinct chromatographic region and the same region between samples.
