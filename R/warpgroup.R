@@ -81,15 +81,28 @@ warpgroup = function(
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
-      zscores = aperm(
-        aaply(sc.d, c(3), scale),
-        c(2,3,1)
-      )
       
-      voters = zscores > -1 & zscores < 1
-      sc.a[!voters] = NA
+      for (y in 1:4) {
+        zscores = aperm(
+          aaply(sc.d, c(3), scale),
+          c(2,3,1)
+        )
+        
+        voters = zscores > -1 & zscores < 1
+        rowtf= aperm(aaply(voters, c(1,3), function(x) {rep(any(!x), length(x))}), c(1,3,2))
+        sc.a[rowtf] = NA
+        
+        p.sc.params = round(aaply(sc.a, c(3), colMeans, na.rm=T))
       
-      p.sc.params = aaply(sc.a, c(3), colMedians, na.rm=T)
+        #Check peak bounds - should all be the same when projected into each others time domain.
+        sc.warps.projected = array(numeric(), dim = dim(sc.a), dimnames=list(NULL,NULL, c("sc", "scmin", "scmax")))
+        for (i in seq(pns.g)) {
+          for (j in seq(pns.g)) {
+            sc.warps.projected[i, j, ] = tw.l[[ps[pns.g[i],"sample"]]][[ps[pns.g[j],"sample"]]]$step(p.sc.params[,as.character(i)])
+          }
+        }
+      
+      }
     } else {
       p.sc.params = aaply(sc.a, c(3), .drop=F, identity)
     }
@@ -98,7 +111,9 @@ warpgroup = function(
     p.sc.params
   })
   
+
   
+
   #Fillpeaks: find peakbounds pf missing peaks with with consensus-bounds found above and warps between raw data
   mb.l = llply(cb.l, function(cb) {
     found = ps[as.numeric(colnames(cb)), "sample"]
