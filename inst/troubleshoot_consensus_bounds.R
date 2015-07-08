@@ -3,16 +3,17 @@
 xs.bak = xs
 
 
-xs = xs.bak
 
 #10140 - bounds messed up
 #14720 - wrong peaks
+#29591 - noise
 
-xs@groupidx = xs@groupidx[14720]
+xs = xs.bak
+xs@groupidx = xs@groupidx[i]
 
 xs = add.raw.sc(xs)
 
-myiter = iter.gwparams(xs, xr.l, sc.max.drift = 20, ppm.max.drift = 3)
+myiter = iter.gwparams(xs, xr.l, sc.max.drift = 70, ppm.max.drift = 3)
 
 params = nextElem(myiter)
 
@@ -32,10 +33,11 @@ groups = llply(groups, function(x) {
   
   cbind(x, pn = params$gidx[x[,"n"]])
 })
+groups
 
   wg = groups
   wg = lapply(wg, function(x) { x[!duplicated(x[,"sample"]),] })
-  plots = lapply(wg, plot.warpgroup, xs2, xr.l, sc.pad = 100)
+  plots = lapply(wg, plot.warpgroup, xs2, xr.l, sc.pad = 100, mz.pad = 0.001)
   do.call(grid.arrange, plots)
 
 

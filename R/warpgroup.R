@@ -101,7 +101,8 @@ warpgroup = function(
             sc.warps.projected[i, j, ] = tw.l[[ps[pns.g[i],"sample"]]][[ps[pns.g[j],"sample"]]]$step(p.sc.params[,as.character(i)])
           }
         }
-      
+        
+        sc.a = sc.warps.projected
       }
     } else {
       p.sc.params = aaply(sc.a, c(3), .drop=F, identity)
@@ -170,7 +171,7 @@ warpgroup = function(
       d.phi.cum = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
       d.cum = matrix(numeric(), ncol=nrow(g), nrow = nrow(g))
       
-      warp.consistency = array(numeric(), dim = c(nrow(g), nrow(g), 2))
+      warp.consistency = array(numeric(), dim = c(nrow(g), nrow(g), 3))
 
       for (i in seq(nrow(g))) {
         for (j in seq(nrow(g))) {
@@ -181,7 +182,7 @@ warpgroup = function(
           tw.m =  tw.l[[p["sample"]]][[g[j,"sample"]]]
           tw.m.rev =  tw.l[[g[j,"sample"]]][[p["sample"]]]
           
-          warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(sc)) - sc
+          warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(c(sc, mean(sc)))) - c(sc,mean(sc))
 
           sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.m$npad
           indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
@@ -197,7 +198,7 @@ warpgroup = function(
       
       bestpeak = which.min(colMeans(aaply(warp.consistency, 3, rowSds)))
       
-      cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T), warp.consistency = rowMeans(abs(warp.consistency[,bestpeak,])))
+      cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T), warp.consistency = rowMeans(abs(warp.consistency[,,3])))
       })
   }
   
