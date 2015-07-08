@@ -4,7 +4,11 @@ xs.bak = xs
 
 
 xs = xs.bak
-xs@groupidx = xs@groupidx[10140]
+
+#10140 - bounds messed up
+#14720 - wrong peaks
+
+xs@groupidx = xs@groupidx[14720]
 
 xs = add.raw.sc(xs)
 
@@ -42,5 +46,5 @@ sc.aligned.factor = 1
 detailed.groupinfo=T
 min.peaks = 1
 tw="dtw"
-
+pct.pad = 0.1
 

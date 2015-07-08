@@ -175,12 +175,15 @@ warpgroup = function(
       for (i in seq(nrow(g))) {
         for (j in seq(nrow(g))) {
           p = g[i,]
-          tw.m =  tw.l[[g[i,"sample"]]][[g[j,"sample"]]]
-          tw.m.rev =  tw.l[[g[j,"sample"]]][[g[i,"sample"]]]
           
-          warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(p[c("scmin","scmax")]))
-
           sc = c(floor(p["scmin"]), ceiling(p["scmax"]))
+          
+          tw.m =  tw.l[[p["sample"]]][[g[j,"sample"]]]
+          tw.m.rev =  tw.l[[g[j,"sample"]]][[p["sample"]]]
+          
+          warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(sc)) - sc
+
+          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.m$npad
           indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
           
           d.phi.cum[i,j] = (tw.m$d.phi[tail(indices, n=1)] - tw.m$d.phi[1]) / length(indices)
@@ -192,7 +195,9 @@ warpgroup = function(
       diag(d.cum)= NA
       library(matrixStats)
       
-      cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T), warp.consistency = colMeans(aaply(warp.consistency, 3, rowSds)))
+      bestpeak = which.min(colMeans(aaply(warp.consistency, 3, rowSds)))
+      
+      cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T), warp.consistency = rowMeans(abs(warp.consistency[,bestpeak,])))
       })
   }
   
