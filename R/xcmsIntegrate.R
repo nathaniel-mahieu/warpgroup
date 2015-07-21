@@ -1,3 +1,19 @@
+#' A wrapper for integration of warpgroups and packaging as an xcmsSet object.
+#' 
+#' \code{warpgroupsToXs} returns an xcmsSet with the original groups and peaks replaced by those described in \code{groups}.
+#' 
+#' This function simply iterates over each group, integrates the appropriate region from xr.l and packages the results as an xcmsSet.
+
+#' @param xs An xcmsSet object.
+#' @param xr.l A list contanining xcmsRaw objects for each sample in the xcmsSet object in order.
+#' @param groups The list of warpgroups as output by \code{group.warpgroup(output.groups=TRUE)}
+#' @param ppm.padding Float. An expansion of the mass window for integration.
+#' @param min.ppm.width Float. Any mass windows narrower than this are expanded to this width.
+#' 
+#' @return An xcmsSet with groups and peaks replaced by warpgroup generated ones.
+#' 
+#' @seealso See \url{https://github.com/nathaniel-mahieu/warpgroup} for examples.
+
 warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) {
   cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
   

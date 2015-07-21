@@ -1,3 +1,24 @@
+#' A wrapper for supplying xcmsSet objects to Warpgroup.
+#' 
+#' \code{group.warpgroup} returns an xcmsSet with the original groups and peaks replaced by those returned by the \code{\link{warpgroup}} algorithm.
+#' 
+#' This function simply iterates over each group in the xcmsSet and runs \code{\link{warpgroup}} on them. The resulting warpgroup output is then re-integrated and returned as a new xcmsSet.
+#' The resulting xcmsSet is ready for a call to \code{\link{diffreport}} and does not need to be grouped.  The results will be redundant and should be filtered appropriately.
+#' 
+#' @param xs An xcmsSet object with initial grouping information.
+#' @param xr.l A list contanining xcmsRaw objects for each sample in the xcmsSet object in order.
+#' @param sc.max.drift Integer.  The maximum time drift expected for a peak in the data set in scans.  Used when looking for missing peaks.
+#' @param ppm.max.drift Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when looking for missing peaks.
+#' @param sc.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
+#' @param output.groups Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.
+#' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance between the aligned peak bounds. Higher numbers emphasize closer peak bounds.
+#' @param detailed.groupinfo Boolean. Returns several extra descriptors of the warping and graph clustering.
+#' @param min.peaks Integer. Groups with fewer peaks than \code{min.peaks} are skipped.
+#' 
+#' @return An xcmsSet with groups and peaks replaced by warpgroup generated ones.
+#' 
+#' @seealso See \url{https://github.com/nathaniel-mahieu/warpgroup} for examples.
+
 group.warpgroup = function(
   xs,
   xr.l,

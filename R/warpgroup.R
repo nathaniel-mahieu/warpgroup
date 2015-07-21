@@ -1,3 +1,25 @@
+#' Warpgroup a set of peak bounds.
+#' 
+#' \code{warpgroup} returns a list of all distinct chromatographic regions determined from the supplied peak bounds for every sample.
+#' 
+#' This function implements the time-warping based chromatogram correspondance determination, splitting of supplied peak bounds into distinct groups, and selection of the correct region to integrate for missing values.
+#' The warpgroup approach can be applied to a variety of situations but is most effective when supplied groups are of high quality.
+#' 
+#' Warpgroup first determines the correspondance between supplied EICs using a time warping technique (by default dynamic time warping).  Based on this correspondance warpgroup splits the supplied peak bounds into sub groups, each which describe similar chromatographic regions.  Warpgroup then determines the appropriate integration region for samples missing peaks.
+#' 
+#' @param ps Matrix. Rows representing peak regions detected in \code{eic.mat.s} and containing columns \code{sc, scmin, scmax, sample}.
+#' @param eic.mat.s Matrix. Chromatograms, one per sample. Columns corresponding to samples and rows corresponding to time with values of intensity.
+#' @param sc.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
+#' @param detailed.groupinfo Logical. Returns several extra descriptors of the warping and graph clustering.
+#' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance between the aligned peak bounds. Higher numbers emphasize closer peak bounds.
+#' @param min.peaks Integer. Supplied groups with fewer than this number of peak bounds will be skipped.
+#' @param tw Character. \code{"tw"} or \code{"dtw"} Allows the selection of the desired correspondance algorithm
+#' @param pct.pad Float. Defines how much padding is added to the ends of each chromatogram.
+#' 
+#' @return A list, one entry for each distinct chromatographic region detected.  Within each entry is a matrix, with one row for each sample describing the start and end of the corresponding peak region as indices of the supplied \code{eic.mat.s}.
+#' 
+#' @seealso See \url{https://github.com/nathaniel-mahieu/warpgroup} for examples.
+
 warpgroup = function(
   ps, # sc, scmin, scmax, sample
   eic.mat.s,
