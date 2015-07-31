@@ -106,7 +106,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
 }
 
 integrate.simple = function(params) {
-  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=9, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax", "mino")))
+  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=11, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax", "mino","sample")))
   
   for (i in seq(params[[1]])) {
     scan.mat = params[[1]][[i]]$scanmat
@@ -134,7 +134,8 @@ integrate.simple = function(params) {
       params[[1]][[i]]$mzrange[[2]],
       min(eic[,"rt"]),
       max(eic[,"rt"]),
-      min(eic[,"intensity"])
+      min(eic[,"intensity"]),
+      i
     )
   }
   
