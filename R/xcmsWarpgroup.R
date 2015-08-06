@@ -47,6 +47,7 @@ group.warpgroup = function(
     
     groups = tryCatch(
 {
+  #params = nextElem(params)
   
   groups = warpgroup(
     ps = params$ps, # sc, scmin, scmax, sample
@@ -60,9 +61,10 @@ group.warpgroup = function(
   )
   
   groups = llply(groups, function(x) {
+    x[, c("sc", "scmin", "scmax")][x[,c("sc", "scmin", "scmax")] < 1] = 1
     
     rts = laply(seq(nrow(x)), function(i) {
-      params$eic.mat[x[i,"sample"],,"rt"][floor(x[i,c("sc", "scmin", "scmax")])]
+      params$eic.mat[x[[i,"sample"]],,"rt"][floor(x[i,c("sc", "scmin", "scmax")])]
       })
     colnames(rts) = c("rt", "rtmin", "rtmax")
     
