@@ -62,6 +62,7 @@ group.warpgroup = function(
   
   groups = llply(groups, function(x) {
     x[, c("sc", "scmin", "scmax")][x[,c("sc", "scmin", "scmax")] < 1] = 1
+    x[, c("sc", "scmin", "scmax")][x[,c("sc", "scmin", "scmax")] > length(params$eic.mat[1,,1])] = length(params$eic.mat[1,,1])
     
     rts = laply(seq(nrow(x)), function(i) {
       params$eic.mat[x[[i,"sample"]],,"rt"][floor(x[i,c("sc", "scmin", "scmax")])]
