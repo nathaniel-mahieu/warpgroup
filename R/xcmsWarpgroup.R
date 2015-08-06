@@ -51,12 +51,11 @@ group.warpgroup = function(
   groups = warpgroup(
     ps = params$ps, # sc, scmin, scmax, sample
     eic.mat.s = params$eic.mat.s,
-    
-    sc.max.drift,
-    sc.aligned.lim,
-    sc.aligned.factor,
-    detailed.groupinfo,
-    min.peaks,
+
+    sc.aligned.lim = sc.aligned.lim,
+    sc.aligned.factor = sc.aligned.factor,
+    detailed.groupinfo = detailed.groupinfo,
+    min.peaks = min.peaks,
     tw="dtw"
   )
   
