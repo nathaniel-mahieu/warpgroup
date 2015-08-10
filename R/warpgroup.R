@@ -216,7 +216,6 @@ warpgroup = function(
       
       diag(d.phi.cum)= NA
       diag(d.cum)= NA
-      library(matrixStats)
       
       bestpeak = which.min(colMeans(aaply(warp.consistency, 3, rowSds)))
       
