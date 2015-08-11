@@ -206,8 +206,12 @@ warpgroup = function(
           
           warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(c(sc, mean(sc)))) - c(sc,mean(sc))
 
-          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.m$npad
-          indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
+          sc = sc + tw.m$npad
+          if (length(dim(tw.m$path)) ==2) {
+            indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
+          } else {
+            indices=1:2
+          }
           
           d.phi.cum[i,j] = (tw.m$d.phi[tail(indices, n=1)] - tw.m$d.phi[1]) / length(indices)
           d.cum[i,j] = sum(tw.m$d[indices]) / length(indices)

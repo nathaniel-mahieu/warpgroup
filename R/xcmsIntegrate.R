@@ -16,7 +16,7 @@
 
 warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) {
   cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
-  
+    
   group.l = unlist(groups, F)
   bad.gs = unique(c(
     which(!sapply(group.l, is.matrix) | is.null(sapply(group.l, nrow)))
@@ -29,7 +29,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) 
     .errorhandling = "pass",
     .noexport = c("xr.l"),
     .inorder=T
-  ) %do% {
+  ) %dopar% {
     ints = integrate.simple(params)
     
     cbind(params[[2]], ints)
@@ -69,21 +69,22 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
     pdata = foreach(i=seq(nrow(g))) %do% {
       p = x[i,]
       pg = g[i,]
+      xr = xr.l[[pg["sample"]]]
       
       mzrange = mzrange.g
       if (!is.na(p["mzmin"])) mzrange = unname(c(p["mzmin"] - p["mzmin"] * ppm.padding / 1E6, p["mzmax"] + p["mzmin"] * ppm.padding / 1E6))
       
       scanrange = as.numeric(c(
-        floor(pg["scmin"]), 
-        ceiling(pg["scmax"])
+        which.min(abs(xr@scantime - floor(pg["rtmin"]))), 
+        which.min(abs(xr@scantime - ceiling(pg["rtmax"])))
       ))
       scanrange[scanrange < 1] = 1
-      maxscan = length(xr.l[[pg["sample"]]]@scantime)
+      maxscan = length(xr@scantime)
       scanrange[scanrange > maxscan] = maxscan 
-      eic = rawEIC(xr.l[[pg["sample"]]], mzrange = mzrange, scanrange = scanrange)      
+      eic = rawEIC(xr, mzrange = mzrange, scanrange = scanrange)      
       eic = cbind(do.call("cbind", eic), rt=xs@rt$corrected[[pg["sample"]]][eic$scan])
       
-      scans = foreach(i=scanrange[1]:scanrange[2]) %do% getScan(xr.l[[pg["sample"]]], i, mzrange)
+      scans = foreach(i=scanrange[1]:scanrange[2]) %do% getScan(xr, i, mzrange)
       scanmat = do.call("rbind", scans)
       
       list(
