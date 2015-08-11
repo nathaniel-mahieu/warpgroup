@@ -90,7 +90,8 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
       list(
         eic = eic,
         scanmat = scanmat,
-        mzrange = mzrange
+        mzrange = mzrange,
+        sc = scanrange
       )
     }
     
@@ -136,7 +137,9 @@ integrate.simple = function(params) {
       min(eic[,"rt"]),
       max(eic[,"rt"]),
       min(eic[,"intensity"]),
-      i
+      i,
+      raw.scmin = params[[1]][[i]]$scrange[1],
+      raw.scmax = params[[1]][[i]]$scrange[2]
     )
   }
   

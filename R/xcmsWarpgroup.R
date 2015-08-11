@@ -11,7 +11,7 @@
 #' @param ppm.max.drift Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when looking for missing peaks.
 #' @param sc.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
 #' @param output.groups Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.
-#' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance between the aligned peak bounds. Higher numbers emphasize closer peak bounds.
+#' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance be   tween the aligned peak bounds. Higher numbers emphasize closer peak bounds.
 #' @param detailed.groupinfo Boolean. Returns several extra descriptors of the warping and graph clustering.
 #' @param min.peaks Integer. Groups with fewer peaks than \code{min.peaks} are skipped.
 #' 
