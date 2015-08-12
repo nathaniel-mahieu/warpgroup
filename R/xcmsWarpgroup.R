@@ -24,7 +24,7 @@ group.warpgroup = function(
   xr.l,
   rt.max.drift, 
   ppm.max.drift, 
-  sc.aligned.lim,
+  rt.aligned.lim,
   output.groups=F,
   sc.aligned.factor = 1,
   detailed.groupinfo = F,
@@ -49,9 +49,11 @@ group.warpgroup = function(
 {
   #params = nextElem(params)
   
+  sc.aligned.lim = round(rt.aligned.lim /  mean(diff(params$eic.mat[1,,"rt"]),na.rm=T))
+  
   groups = warpgroup(
     ps = params$ps, # sc, scmin, scmax, sample
-    eic.mat.s = params$eic.mat.s,
+    eic.mat.s = aperm(params$eic.mat[,,"intensity"]),
 
     sc.aligned.lim = sc.aligned.lim,
     sc.aligned.factor = sc.aligned.factor,
@@ -85,62 +87,37 @@ return(warpgroupsToXs(xs, groups, xr.l)) # Merge back into traditional xcms work
 }
 
 
-eic.mat.from.list = function(eic.l, length.target = Inf, upsample.force = F) {
-  length = max(sapply(eic.l, function(x) {length(x$intensity)}))
-  length.target.n = length.target
-  
-  if (length.target > 0 & length.target < 1) { #cat("Downsampling longest EIC to", length.target * 100, "percent.  This is", length*length.target, "scans."); 
-                                               length.target.n = length*length.target }
-  if (length.target > 1 & length.target < Inf) { #cat("Downsampling longest EIC to", length.target, "scans.  This is", round(length.target/length * 100), "percent of the longest EIC."); 
-                                                 length.target.n = length.target }
-  if (length.target.n > length & upsample.force == F) { #cat("Length target would upsample the timeseries. Instead, adjusting length target to longest timeseries:", length, "override with upsample.force=T."); 
-                                                        length.target.n = length }
-  
-  
-  eic.mat.s = array(integer(1), dim=c(length(eic.l), length.target.n, 2), dimnames=list(NULL, NULL, c("rt", "intensity")))
-  for (i in seq(eic.l)) {
-    eic.inter = approx(eic.l[[i]]$rt, eic.l[[i]]$intensity, n = length.target.n)
-    eic.mat.s[i,,] = do.call(cbind, eic.inter)
-    }
-  
-  eic.mat.s
-}
-
-iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift) {
+iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, length.target, smooth.n) {
   it <- iter(xs@groupidx)
+  maxrt = min(sapply(xr.l, function(x) { max(x@scantime) }))
   
   nextEl = function() {
     gidx <- nextElem(it)  # throws "StopIteration"
-    
     ps = xs@peaks[gidx,,drop=F]
     
-    maxrt = min(sapply(xr.l, function(x) { max(x@scantime) }))
-    
+    # Define RT region for EIC generation
     rts = c(
       min(ps[,"rtmin"])-rt.max.drift, 
       max(ps[,"rtmax"])+rt.max.drift
     )
     rts[rts <= 0] = 1
     rts[rts > maxrt] = maxrt
-    start.rt = min(rts)   
-    
+
     scans = laply(xr.l, function(x) {
-      h = sapply(rts, function(y) {which.min(abs(x@scantime - y))})
-      c(h, diff(h))
+      sapply(rts, function(y) {which.min(abs(x@scantime - y))})
       })
     
-    #Per sample, summed EIC matrix for alignment
+    # Define m/z region for EIC generation
     mzmin = min(ps[,"mzmin"] - ps[,"mzmin"] * ppm.max.drift/1E6)
     mzmax = max(ps[,"mzmax"] + ps[,"mzmax"] * ppm.max.drift/1E6)
     
     eic.l = lapply(seq(xr.l), function(i) {
       l = rawEIC(xr.l[[i]], mzrange = c(mzmin, mzmax), scanrange = scans[i,c(1,2)])
       l$rt = xr.l[[i]]@scantime[l$scan]
-      l
+      do.call(rbind, l)
       })
     
-    eic.mat = eic.mat.from.list(eic.l)
-    eic.mat.s = aperm(eic.mat[,,2])
+    eic.mat = eicMatFromList(eic.l, length.target = length.target, smooth.n = smooth.n)
     
     ps.m = ps[,c("sc", "scmin", "scmax", "sample"),drop=F]
     for (r in seq(nrow(ps))) {
@@ -151,7 +128,6 @@ iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift) {
     }
     
     list(
-      eic.mat.s = eic.mat.s,
       eic.mat = eic.mat,
       ps = ps.m,
       gidx = gidx

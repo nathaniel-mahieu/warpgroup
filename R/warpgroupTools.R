@@ -1,3 +1,52 @@
+#' A helper function to interpolate a list of EIC's into a matrix with optional down/up-sampling and smoothing
+#' 
+#' \code{eicMatFromList} returns an array containing each EIC's resulting intensity, retention time, and scan.
+#' 
+#' This function simply iterates over each group in the xcmsSet and runs \code{\link{warpgroup}} on them. The resulting warpgroup output is then re-integrated and returned as a new xcmsSet.
+#' The resulting xcmsSet is ready for a call to \code{\link{diffreport}} and does not need to be grouped.  The results will be redundant and should be filtered appropriately.
+#' 
+#' @param eic.l A list of matrices respresnting EICs.  Each matrix has rows "rt", "intensity", and "scan"
+#' @param length.target Numeric.  If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
+#' @param upsample.force Boolean.  Must be true for resulting EICs to be of length > max.
+#' @param smooth.n Integer. The number of points to include in the moving average.
+#' @param normalize Boolean. If T all EICs will be normalized to 1.0
+#' 
+#' @return An array containing each EIC's resulting intensity, retention time, and scan.
+
+eicMatFromList = function(eic.l, length.target = Inf, upsample.force = F, smooth.n = 1, normalize = T) {
+  length = max(sapply(eic.l, function(x) {ncol(x)}))
+  length.target.n = length.target
+  
+  if (length.target > 0 & length.target < 1) { #cat("Downsampling longest EIC to", length.target * 100, "percent.  This is", length*length.target, "scans."); 
+    length.target.n = length*length.target }
+  if (length.target > 1 & length.target < Inf) { #cat("Downsampling longest EIC to", length.target, "scans.  This is", round(length.target/length * 100), "percent of the longest EIC."); 
+    length.target.n = length.target }
+  if (length.target.n > length & upsample.force == F) { #cat("Length target would upsample the timeseries. Instead, adjusting length target to longest timeseries:", length, "override with upsample.force=T."); 
+    length.target.n = length }
+  
+  
+  eic.mat.s = array(integer(1), dim=c(length(eic.l), length.target.n, 3), dimnames=list(NULL, NULL, c("rt", "intensity", "scan")))
+  for (i in seq(eic.l)) {
+    eic = eic.l[[i]]
+    interpolated.int = approx(eic["rt",], eic["intensity",], n = length.target.n)
+    interpolated.scans = approx(eic["rt",], eic["scan",], n = length.target.n)
+    
+    x = filter(interpolated.int$y, rep(1, smooth.n)/smooth.n, sides=2)
+    x[is.na(x)] = 0 
+    x = x@.Data
+    
+    if (normalize)   m = max(x); m[m==0] = 1; x = x/m
+    
+    eic.mat.s[i,,c("rt")] = interpolated.int$x
+    eic.mat.s[i,,c("intensity")] = interpolated.int$y
+    eic.mat.s[i,,c("scan")] = interpolated.scans$y
+  }
+  
+  eic.mat.s
+}
+
+
+
 dtwFunc = function(v1, v2, keep=T) {
   dtw(
     v1,
@@ -21,22 +70,6 @@ ptwFunc = function(v1, v2, keep=F) {
   )
 }
 
-prepEicMat = function(eic.mat, n.pad=0) {
-  pad.mat = matrix(0, ncol = ncol(eic.mat), nrow = n.pad)
-  
-  eic.mat.ma = filter(eic.mat, c(1,1,1)/3, sides=2)
-  eic.mat.ma[is.na(eic.mat.ma)] = 0 
-  eic.mat[] = eic.mat.ma@.Data
-  
-  eic.mat = t(aaply(eic.mat, 2, function(x) { 
-    m = max(x); m[m==0] = 1;
-    x/m
-  }))
-  
-  eic.mat = rbind(pad.mat, eic.mat, pad.mat)
-  eic.mat
-}
-
 getStep = function(a, tw, n.pad) {
   if (tw == "dtw") {
     return(stepfun(a$index1[-1] - n.pad, a$index2 - n.pad))
@@ -47,7 +80,10 @@ getStep = function(a, tw, n.pad) {
 
 buildTwList = function(eic.mat, pct.pad = 0, tw="dtw") {
   n.pad = floor(nrow(eic.mat) * pct.pad)
-  eic.mat = prepEicMat(eic.mat, n.pad)
+  
+  pad.mat = matrix(0, ncol = ncol(eic.mat), nrow = n.pad)
+  eic.mat = rbind(pad.mat, eic.mat, pad.mat)
+  
   n = ncol(eic.mat)
   tw.l = rep(list(vector("list",n)), n)
   
