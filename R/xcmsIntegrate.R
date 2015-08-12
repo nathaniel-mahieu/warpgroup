@@ -40,17 +40,6 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) 
   
   rts = matrix(numeric(), ncol = 2, nrow = nrow(pt), dimnames = list(NULL, c("rtmin", "rtmax")))
   rt = rep(numeric(), nrow(pt))
-  
-  for (i in seq(xr.l)) {
-    rts[pt[,"sample"] == i,] = xs@rt$corrected[[i]][pt[pt[,"sample"] == i,c("scmin.raw", "scmax.raw")]]
-    for (j in which(pt[,"sample"] == i)) {
-      sc = which.min(abs(pt[j,"rt.raw"] - xs@rt$raw[[i]]))
-      if (length(sc) > 0) { rt[j] = xs@rt$corrected[[i]][sc] } else { rt[j] = NA }
-    }
-  }
-  
-
-  
   xs@peaks = pt[order(pt[,"sample"]),]
   xs = buildGroups(xs, xs@peaks[,"new.gidx"])
   
@@ -61,7 +50,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
   it <- iter(group.l)
   
   nextEl = function() {
-    g <- nextElem(it)  # throws "StopIteration"
+    g <- nextElem(it) 
     
     g = g[!duplicated(g[,"sample"]),,drop=F]
     

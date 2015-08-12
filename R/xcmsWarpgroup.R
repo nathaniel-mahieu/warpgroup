@@ -9,7 +9,9 @@
 #' @param xr.l A list contanining xcmsRaw objects for each sample in the xcmsSet object in order.
 #' @param sc.max.drift Integer.  The maximum time drift expected for a peak in the data set in scans.  Used when looking for missing peaks.
 #' @param ppm.max.drift Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when looking for missing peaks.
-#' @param sc.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
+#' @param rt.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
+#' @param eic.resample.target If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
+#' @param smooth.n Number of points to consider for the moving average smoothing of each EIC. 1 disables smoothing.
 #' @param output.groups Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.
 #' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance be   tween the aligned peak bounds. Higher numbers emphasize closer peak bounds.
 #' @param detailed.groupinfo Boolean. Returns several extra descriptors of the warping and graph clustering.
@@ -25,6 +27,7 @@ group.warpgroup = function(
   rt.max.drift, 
   ppm.max.drift, 
   rt.aligned.lim,
+  smooth.n,
   eic.resample.target = Inf,
   output.groups=F,
   sc.aligned.factor = 1,

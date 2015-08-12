@@ -6,7 +6,7 @@
 #' The resulting xcmsSet is ready for a call to \code{\link{diffreport}} and does not need to be grouped.  The results will be redundant and should be filtered appropriately.
 #' 
 #' @param eic.l A list of matrices respresnting EICs.  Each matrix has rows "rt", "intensity", and "scan"
-#' @param length.target Numeric.  If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
+#' @param eic.resample.target Numeric.  If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
 #' @param upsample.force Boolean.  Must be true for resulting EICs to be of length > max.
 #' @param smooth.n Integer. The number of points to include in the moving average.
 #' @param normalize Boolean. If T all EICs will be normalized to 1.0
