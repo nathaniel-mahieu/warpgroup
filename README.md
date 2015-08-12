@@ -42,7 +42,7 @@ xs.r = retcor(xs, ...)
 xs.rg = group(xs.r, ...)
 
 #Warpgrouping
-xr.l = llply(xsw.rg@filepaths, xcmsRaw, profstep=0)
+xr.l = llply(xs.rg@filepaths, xcmsRaw, profstep=0)
 xs.warpgroup = group.warpgroup(xs.rg, xr.l = xr.l, sc.max.drift = 20, ppm.max.drift = 3, sc.aligned.lim = 7)
 ```
 
