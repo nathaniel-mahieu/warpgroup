@@ -25,6 +25,7 @@ group.warpgroup = function(
   rt.max.drift, 
   ppm.max.drift, 
   rt.aligned.lim,
+  eic.resample.target = Inf,
   output.groups=F,
   sc.aligned.factor = 1,
   detailed.groupinfo = F,
@@ -37,7 +38,7 @@ group.warpgroup = function(
   tryCatch(redisIncrBy("countTotal", length(xs@groupidx)), error=function(e) NULL)
   
   groups = foreach(
-    params = iter.gwparams(xs, xr.l, rt.max.drift, ppm.max.drift),
+    params = iter.gwparams(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n),
     .packages = c("warpgroup", "dtw", "igraph"),
     .errorhandling = "pass",
     .noexport = c("xr.l"),
@@ -69,9 +70,9 @@ group.warpgroup = function(
     rts = laply(seq(nrow(x)), function(i) {
       params$eic.mat[x[[i,"sample"]],,"rt"][floor(x[i,c("sc", "scmin", "scmax")])]
       })
-    colnames(rts) = c("rt", "rtmin", "rtmax")
+    colnames(rts) = c("rt.raw", "rtmin.raw", "rtmax.raw")
     
-    cbind(x, rts, pn = params$gidx[x[,"n"]])
+    cbind(x[,-which(colnames(x) %in% c("sc", "scmin", "scmax"))], rts, pn = params$gidx[x[,"n"]])
   })
   
 },
@@ -87,7 +88,7 @@ return(warpgroupsToXs(xs, groups, xr.l)) # Merge back into traditional xcms work
 }
 
 
-iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, length.target, smooth.n) {
+iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n) {
   it <- iter(xs@groupidx)
   maxrt = min(sapply(xr.l, function(x) { max(x@scantime) }))
   
@@ -117,7 +118,7 @@ iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, length.target, s
       do.call(rbind, l)
       })
     
-    eic.mat = eicMatFromList(eic.l, length.target = length.target, smooth.n = smooth.n)
+    eic.mat = eicMatFromList(eic.l, eic.resample.target = eic.resample.target, smooth.n = smooth.n)
     
     ps.m = ps[,c("sc", "scmin", "scmax", "sample"),drop=F]
     for (r in seq(nrow(ps))) {

@@ -29,7 +29,7 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) 
     .errorhandling = "pass",
     .noexport = c("xr.l"),
     .inorder=T
-  ) %dopar% {
+  ) %do% {
     ints = integrate.simple(params)
     
     cbind(params[[2]], ints)
@@ -37,6 +37,20 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) 
   
   pt.l = lapply(seq(pt.l), function(i) cbind(pt.l[[i]], new.gidx = i))
   pt = do.call("rbind", pt.l)
+  
+  rts = matrix(numeric(), ncol = 2, nrow = nrow(pt), dimnames = list(NULL, c("rtmin", "rtmax")))
+  rt = rep(numeric(), nrow(pt))
+  
+  for (i in seq(xr.l)) {
+    rts[pt[,"sample"] == i,] = xs@rt$corrected[[i]][pt[pt[,"sample"] == i,c("scmin.raw", "scmax.raw")]]
+    for (j in which(pt[,"sample"] == i)) {
+      sc = which.min(abs(pt[j,"rt.raw"] - xs@rt$raw[[i]]))
+      if (length(sc) > 0) { rt[j] = xs@rt$corrected[[i]][sc] } else { rt[j] = NA }
+    }
+  }
+  
+
+  
   xs@peaks = pt[order(pt[,"sample"]),]
   xs = buildGroups(xs, xs@peaks[,"new.gidx"])
   
@@ -73,10 +87,12 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
       
       mzrange = mzrange.g
       if (!is.na(p["mzmin"])) mzrange = unname(c(p["mzmin"] - p["mzmin"] * ppm.padding / 1E6, p["mzmax"] + p["mzmin"] * ppm.padding / 1E6))
+      ppm.width = abs(diff(mzrange)/mean(mzrange) * 1E6)
+      if (ppm.width < min.ppm.width) mzrange = c(mzrange[1] - (abs(ppm.width - min.ppm.width)/2 * mzrange[1] / 1E6), mzrange[2] + (abs(ppm.width - min.ppm.width)/2 * mzrange[2] / 1E6))
       
       scanrange = as.numeric(c(
-        which.min(abs(xr@scantime - floor(pg["rtmin"]))), 
-        which.min(abs(xr@scantime - ceiling(pg["rtmax"])))
+        which.min(abs(xr@scantime - floor(pg["rtmin.raw"]))), 
+        which.min(abs(xr@scantime - ceiling(pg["rtmin.raw"])))
       ))
       scanrange[scanrange < 1] = 1
       maxscan = length(xr@scantime)
@@ -108,7 +124,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
 }
 
 integrate.simple = function(params) {
-  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=11, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax", "mino","sample")))
+  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=12, dimnames=list(NULL, c("mz", "rt", "rt.half", "rtmin", "rtmax", "into", "maxo", "mzmin", "mzmax", "mino", "scmin.raw", "scmax.raw")))
   
   for (i in seq(params[[1]])) {
     scan.mat = params[[1]][[i]]$scanmat
@@ -130,16 +146,15 @@ integrate.simple = function(params) {
       mz,
       rtwmean,
       rt.half,
+      min(eic[,"rt"]),
+      max(eic[,"rt"]),
       into,
       max(eic[,"intensity"]),
       params[[1]][[i]]$mzrange[[1]],
       params[[1]][[i]]$mzrange[[2]],
-      min(eic[,"rt"]),
-      max(eic[,"rt"]),
       min(eic[,"intensity"]),
-      i,
-      raw.scmin = params[[1]][[i]]$scrange[1],
-      raw.scmax = params[[1]][[i]]$scrange[2]
+      params[[1]][[i]]$sc[1],
+      params[[1]][[i]]$sc[2]
     )
   }
   

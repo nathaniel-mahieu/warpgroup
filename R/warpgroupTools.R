@@ -13,14 +13,14 @@
 #' 
 #' @return An array containing each EIC's resulting intensity, retention time, and scan.
 
-eicMatFromList = function(eic.l, length.target = Inf, upsample.force = F, smooth.n = 1, normalize = T) {
+eicMatFromList = function(eic.l, eic.resample.target = Inf, upsample.force = F, smooth.n = 1, normalize = T) {
   length = max(sapply(eic.l, function(x) {ncol(x)}))
-  length.target.n = length.target
+  length.target.n = eic.resample.target
   
-  if (length.target > 0 & length.target < 1) { #cat("Downsampling longest EIC to", length.target * 100, "percent.  This is", length*length.target, "scans."); 
-    length.target.n = length*length.target }
-  if (length.target > 1 & length.target < Inf) { #cat("Downsampling longest EIC to", length.target, "scans.  This is", round(length.target/length * 100), "percent of the longest EIC."); 
-    length.target.n = length.target }
+  if (eic.resample.target > 0 & eic.resample.target < 1) { #cat("Downsampling longest EIC to", eic.resample.target * 100, "percent.  This is", length*eic.resample.target, "scans."); 
+    length.target.n = length*eic.resample.target }
+  if (eic.resample.target > 1 & eic.resample.target < Inf) { #cat("Downsampling longest EIC to", eic.resample.target, "scans.  This is", round(eic.resample.target/length * 100), "percent of the longest EIC."); 
+    length.target.n = eic.resample.target }
   if (length.target.n > length & upsample.force == F) { #cat("Length target would upsample the timeseries. Instead, adjusting length target to longest timeseries:", length, "override with upsample.force=T."); 
     length.target.n = length }
   
