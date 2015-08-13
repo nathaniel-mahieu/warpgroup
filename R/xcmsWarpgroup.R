@@ -12,6 +12,7 @@
 #' @param rt.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
 #' @param eic.resample.target If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
 #' @param smooth.n Number of points to consider for the moving average smoothing of each EIC. 1 disables smoothing.
+#' @param normalize Boolean.  If TRUE all EICs will be normalized to 1.
 #' @param output.groups Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.
 #' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance be   tween the aligned peak bounds. Higher numbers emphasize closer peak bounds.
 #' @param detailed.groupinfo Boolean. Returns several extra descriptors of the warping and graph clustering.
@@ -28,6 +29,7 @@ group.warpgroup = function(
   ppm.max.drift, 
   rt.aligned.lim,
   smooth.n,
+  normalize = T,
   eic.resample.target = Inf,
   output.groups=F,
   sc.aligned.factor = 1,
@@ -41,7 +43,7 @@ group.warpgroup = function(
   tryCatch(redisIncrBy("countTotal", length(xs@groupidx)), error=function(e) NULL)
   
   groups = foreach(
-    params = iter.gwparams(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n),
+    params = iter.gwparams(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n, normalize),
     .packages = c("warpgroup", "dtw", "igraph"),
     .errorhandling = "pass",
     .noexport = c("xr.l"),
@@ -91,7 +93,7 @@ return(warpgroupsToXs(xs, groups, xr.l)) # Merge back into traditional xcms work
 }
 
 
-iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n) {
+iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.target, smooth.n, normalize) {
   it <- iter(xs@groupidx)
   maxrt = min(sapply(xr.l, function(x) { max(x@scantime) }))
   
@@ -121,7 +123,7 @@ iter.gwparams = function(xs, xr.l, rt.max.drift, ppm.max.drift, eic.resample.tar
       do.call(rbind, l)
       })
     
-    eic.mat = eicMatFromList(eic.l, eic.resample.target = eic.resample.target, smooth.n = smooth.n)
+    eic.mat = eicMatFromList(eic.l, eic.resample.target = eic.resample.target, smooth.n = smooth.n, normalize = normalize)
     
     ps.m = ps[,c("sc", "scmin", "scmax", "sample"),drop=F]
     for (r in seq(nrow(ps))) {

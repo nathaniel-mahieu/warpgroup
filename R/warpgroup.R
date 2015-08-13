@@ -31,6 +31,7 @@ warpgroup = function(
   pct.pad = 0.1
 ) {
   if (nrow(ps) < min.peaks) stop("Less peaks in starting group than min.peaks.")
+  if (nrow(eic.mat.s) < 3) stop("EIC contains too few points.")
   
   ps = cbind(ps, n=1:nrow(ps))
   
