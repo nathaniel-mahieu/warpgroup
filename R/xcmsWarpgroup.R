@@ -36,7 +36,7 @@ group.warpgroup = function(
   detailed.groupinfo = F,
   min.peaks = 1
 ) { #Handles parallelization
-  cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected. The default output of this wrapper is an xcmsSet object for compatibility, but a list of groups, each containing the warpgroup determined peak bounds can be obtained by setting output.groups=T.\n")
+  cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected.\nIf peak detection was poor it is likely that many peak groups will be similar or redundant.\n\nWarpgroup operates on the assumption that all samples will have similar EIC traces. As such warpgroup will incorrectly define peak groups in cases where samples are very different.")
   
   xs = add.raw.sc(xs)
   
