@@ -1,14 +1,3 @@
-plot.warpgroup = function(group, xs, xr.l, sc.pad = 20, mz.pad = 0.001, type=1) {
-  g = group
-  ps = xs@peaks[g[,"pn"],,drop=F]
-  ps[,c("sc","scmin","scmax","sample")] = g[,c("sc","scmin","scmax","sample")]
-  
-  eic.mat = makeEicMat(ps, xr.l, sc.pad, mz.pad)
-
-  g[,c("sc", "scmin", "scmax")] = g[,c("sc", "scmin", "scmax")] - min(g[,"scmin"]) + 1 + sc.pad
-  plot_peaks_bounds(eic.mat, g, type=type)
-}
-
 ppb2 = function(eic, bounds, overlap = 1.1) {
   eic.mat.s = apply(eic, 2, function(x) { max = max(x); if (max == 0) max = 1; x/max })
   #eic.mat.s = sapply(seq(ncol(eic.mat.s)), function(i) { eic.mat.s[,i]+overlap*(i-1) })

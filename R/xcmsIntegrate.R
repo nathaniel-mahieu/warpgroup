@@ -81,7 +81,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
       
       scanrange = as.numeric(c(
         which.min(abs(xr@scantime - floor(pg["rtmin.raw"]))), 
-        which.min(abs(xr@scantime - ceiling(pg["rtmin.raw"])))
+        which.min(abs(xr@scantime - ceiling(pg["rtmax.raw"])))
       ))
       scanrange[scanrange < 1] = 1
       maxscan = length(xr@scantime)
