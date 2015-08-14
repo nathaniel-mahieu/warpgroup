@@ -104,16 +104,26 @@ warpgroup = function(
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
+      # Pick voting peaks
+      zscores = aperm(
+        aaply(sc.d, c(3), scale, center=F),
+        c(2,3,1)
+      )
       
+      foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
+      rowtf = aaply(foo, 2, function(x) { 
+        moststable = min(x) 
+        if (min(x) < .75) {
+          x < .75
+        } else {
+          x < quantile(foo[,1], 0.75)
+        }
+      })
+      rowtf2 = aperm(outer(rowtf, rep(T, 5), "&"),c(2,3,1))
+      
+      #Iterate to converge chosen bounds
       for (y in 1:4) {
-        zscores = aperm(
-          aaply(sc.d, c(3), scale),
-          c(2,3,1)
-        )
-        
-        voters = zscores > -1 & zscores < 1
-        rowtf= aperm(aaply(voters, c(1,3), function(x) {rep(any(!x), length(x))}), c(1,3,2))
-        sc.a[rowtf] = NA
+        sc.a[rowtf2] = NA
         
         p.sc.params = round(aaply(sc.a, c(3), colMeans, na.rm=T))
       
