@@ -6,6 +6,6 @@ Description: The warpgroup algorithm takes detected peaks appearing across multi
 Author: Nathaniel Guy Mahieu <nathaniel.mahieu@wustl.edu>
 Maintainer: Nathaniel Guy Mahieu <nathaniel.mahieu@wustl.edu>
 License: GPL-3
-Depends: dtw, igraph, plyr, reshape2, miscTools, foreach, iterators
+Depends: R (>= 3.1.0), dtw, igraph, plyr, reshape2, miscTools, foreach, iterators
 Suggests: doParallel
 Enhances: xcms
