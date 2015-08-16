@@ -112,8 +112,9 @@ warpgroup = function(
       
       foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
       rowtf = aaply(foo, 2, function(x) { 
-        moststable = min(x) 
-        if (min(x) < .75) {
+        if (all(is.na(x))) {
+          is.na(x)
+        } else if (min(x) < .75) {
           x < .75
         } else {
           x < quantile(foo[,1], 0.75)
