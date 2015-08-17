@@ -113,14 +113,14 @@ warpgroup = function(
       foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
       rowtf = aaply(foo, 2, function(x) { 
         if (all(is.na(x))) {
-          is.na(x)
+          !is.na(x)
         } else if (min(x) < .75) {
-          x < .75
+          x >= .75
         } else {
-          x < quantile(foo[,1], 0.75)
+          x > quantile(foo[,1], 0.75)
         }
       })
-      rowtf2 = aperm(outer(rowtf, rep(T, 5), "&"),c(2,3,1))
+      rowtf2 = aperm(outer(rowtf, rep(T, ncol(rowtf)), "&"),c(2,3,1))
       
       #Iterate to converge chosen bounds
       for (y in 1:4) {
