@@ -105,6 +105,7 @@ buildTwList = function(eic.mat, pct.pad = 0, tw="dtw") {
       data$d = warp$localCostMatrix[ data$path ]
       data$tw = tw
       data$npad = n.pad
+      #data$warp = warp
       
       tw.l[[i]][[j]] = data
     }

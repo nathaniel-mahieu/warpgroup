@@ -117,7 +117,7 @@ warpgroup = function(
         } else if (min(x) < .75) {
           x >= .75
         } else {
-          x > quantile(foo[,1], 0.75)
+          x < quantile(x, 0.75)
         }
       })
       rowtf2 = aperm(outer(rowtf, rep(T, ncol(rowtf)), "&"),c(2,3,1))
