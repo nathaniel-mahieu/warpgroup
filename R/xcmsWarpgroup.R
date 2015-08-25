@@ -7,12 +7,12 @@
 #' 
 #' @param xs An xcmsSet object with initial grouping information.
 #' @param xr.l A list contanining xcmsRaw objects for each sample in the xcmsSet object in order.
-#' @param sc.max.drift Integer.  The maximum time drift expected for a peak in the data set in scans.  Used when looking for missing peaks.
-#' @param ppm.max.drift Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when looking for missing peaks.
-#' @param rt.aligned.lim Integer. Peak bounds after alignment are considered the same if they are within this limit.
-#' @param eic.resample.target If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
-#' @param smooth.n Number of points to consider for the moving average smoothing of each EIC. 1 disables smoothing.
-#' @param normalize Boolean.  If TRUE all EICs will be normalized to 1.
+#' @param rt.max.drift Float.  The maximum retention time drift in seconds expected for a peak in the data set in scans.  Used when setting the boundaries for looking for missing peaks.
+#' @param ppm.max.drift Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when setting the boundaries for looking for missing peaks.
+#' @param rt.aligned.lim Float. Peak bounds after alignment are considered to describe the same region if they are within this limit.
+#' @param eic.resample.target If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max. See \code{\link{eicMatFromList}}
+#' @param smooth.n Number of points to consider for the moving average smoothing of each EIC. 1 disables smoothing. See \code{\link{eicMatFromList}}
+#' @param normalize Boolean.  If TRUE all EICs will be normalized to 1. See \code{\link{eicMatFromList}}
 #' @param output.groups Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.
 #' @param sc.aligned.factor Float. Experimental feature where graph edges are weighted proportionally to the distance be   tween the aligned peak bounds. Higher numbers emphasize closer peak bounds.
 #' @param detailed.groupinfo Boolean. Returns several extra descriptors of the warping and graph clustering.

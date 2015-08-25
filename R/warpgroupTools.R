@@ -1,9 +1,8 @@
-#' A helper function to interpolate a list of EIC's into a matrix with optional down/up-sampling and smoothing
+#' A helper function to interpolate a list of EIC's into a rectangular array with optional down/up-sampling and smoothing
 #' 
 #' \code{eicMatFromList} returns an array containing each EIC's resulting intensity, retention time, and scan.
 #' 
-#' This function simply iterates over each group in the xcmsSet and runs \code{\link{warpgroup}} on them. The resulting warpgroup output is then re-integrated and returned as a new xcmsSet.
-#' The resulting xcmsSet is ready for a call to \code{\link{diffreport}} and does not need to be grouped.  The results will be redundant and should be filtered appropriately.
+#' This function takes a list of EIC's (intensities, retention times, and indices for each scan) and interpolates them such that they are the same length and normalizes the intensities to 1.
 #' 
 #' @param eic.l A list of matrices respresnting EICs.  Each matrix has rows "rt", "intensity", and "scan"
 #' @param eic.resample.target Numeric.  If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max.
