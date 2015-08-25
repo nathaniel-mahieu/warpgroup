@@ -26,9 +26,9 @@ The xcmsSet must include rough grouping information. The quality of resulting wa
 
 ### Parameters:
 * xr.l: a list() containing an xcmsRaw object for each sample in the order of @filepaths
-* sc.max.drift: The maximum drift in scans between samples.  Determines how large a region surrounding the group is extracted in order to include any features which were not detected.
-* ppm.max.drift: The maximum drift in ppm between samples.  Determines how large a region surrounding the group is extracted in order to include any features which were not detected.
-* sc.aligned.lim: The maximum difference two sets of transformed peak bounds can exhibit before being split into different groups.
+* rt.max.drift: The maximum retention time drift in seconds expected for a peak in the data set in scans.  Used when setting the boundaries for looking for missing peaks.
+* ppm.max.drift: The maximum mass drift expected for a peak in the data set in ppm.  Used when setting the boundaries for looking for missing peaks.  Determines how large a region surrounding the group is extracted in order to include any features which were not detected.
+* rt.aligned.lim: Peak bounds after alignment are considered to describe the same region if they are within this limit.
 
 ```r
 # Parallel Backend Setup
@@ -42,8 +42,8 @@ xs.r = retcor(xs, ...)
 xs.rg = group(xs.r, ...)
 
 #Warpgrouping
-xr.l = llply(xsw.rg@filepaths, xcmsRaw, profstep=0)
-xs.warpgroup = group.warpgroup(xs.rg, xr.l = xr.l, sc.max.drift = 20, ppm.max.drift = 3, sc.aligned.lim = 7)
+xr.l = llply(xs.rg@filepaths, xcmsRaw, profstep=0)
+xs.warpgroup = group.warpgroup(xs.rg, xr.l = xr.l, rt.max.drift = 20, ppm.max.drift = 3, rt.aligned.lim = 5)
 ```
 
 ## Example
@@ -75,5 +75,7 @@ for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))
 ![Peaks after to warpgrouping 3](inst/figure/extreme_example_fixed-3.png)
 
 
-Warpgroup generated three peak groups, each describing a distinct chromatographic region and the same region between samples.
+Warpgroup generated three peak groups, each group describing a distinct chromatographic region and the same region in each sample.
 
+# License
+This project is licensed under the terms of the GPL-3 license.
