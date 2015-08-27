@@ -1,5 +1,5 @@
 Package: warpgroup
-Version: 0.0.1.9002
+Version: 0.1.0.9000
 Date: 2015-02-14
 Title: Advanced Alignment, Grouping, and Consensus Peak Bounding of LC/MS Data
 Description: The warpgroup algorithm takes detected peaks appearing across multiple LC/MS samples and determines: 1. The most appropriate segregation of those peaks using a local DTW alignment and graph decomposition; 2. Per-group consensus integration bounds such that each group represents a topographically similar region of the peak chromatogram; 3. The corresponding peak integration bounds for samples in which no peak was detected. Additionally the output provides effective parameters for filtering "good peaks" from "noise peaks".
