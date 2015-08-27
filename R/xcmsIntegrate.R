@@ -15,8 +15,8 @@
 #' @seealso See \url{https://github.com/nathaniel-mahieu/warpgroup} for examples.
 
 warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) {
-  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\nCaution: diffreport() performs further processing on the peak groups before reporting statistics. Specifically it discards overlapping groups. This could remove groups which describe different portions of a peak found by the warpgrouping yet overlap.  If this behavior is not desired statstics can easily be performed on the raw warpgroup data retrieved by setting output.groups=T.\n")
-  
+  cat("Converting warpgroups to xcmsSet.\nNote: The xcmsSet returned by this function does not need fillpeaks().\n")
+    
   group.l = unlist(groups, F)
   bad.gs = unique(c(
     which(!sapply(group.l, is.matrix) | is.null(sapply(group.l, nrow)))
@@ -37,6 +37,9 @@ warpgroupsToXs = function(xs, groups, xr.l, ppm.padding=0.1, min.ppm.width = 0) 
   
   pt.l = lapply(seq(pt.l), function(i) cbind(pt.l[[i]], new.gidx = i))
   pt = do.call("rbind", pt.l)
+  
+  rts = matrix(numeric(), ncol = 2, nrow = nrow(pt), dimnames = list(NULL, c("rtmin", "rtmax")))
+  rt = rep(numeric(), nrow(pt))
   xs@peaks = pt[order(pt[,"sample"]),]
   xs = buildGroups(xs, xs@peaks[,"new.gidx"])
   
@@ -47,7 +50,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
   it <- iter(group.l)
   
   nextEl = function() {
-    g <- nextElem(it)  # throws "StopIteration"
+    g <- nextElem(it) 
     
     g = g[!duplicated(g[,"sample"]),,drop=F]
     
@@ -69,27 +72,31 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
     pdata = foreach(i=seq(nrow(g))) %do% {
       p = x[i,]
       pg = g[i,]
+      xr = xr.l[[pg["sample"]]]
       
       mzrange = mzrange.g
       if (!is.na(p["mzmin"])) mzrange = unname(c(p["mzmin"] - p["mzmin"] * ppm.padding / 1E6, p["mzmax"] + p["mzmin"] * ppm.padding / 1E6))
+      ppm.width = abs(diff(mzrange)/mean(mzrange) * 1E6)
+      if (ppm.width < min.ppm.width) mzrange = c(mzrange[1] - (abs(ppm.width - min.ppm.width)/2 * mzrange[1] / 1E6), mzrange[2] + (abs(ppm.width - min.ppm.width)/2 * mzrange[2] / 1E6))
       
       scanrange = as.numeric(c(
-        floor(pg["scmin"]), 
-        ceiling(pg["scmax"])
+        which.min(abs(xr@scantime - floor(pg["rtmin.raw"]))), 
+        which.min(abs(xr@scantime - ceiling(pg["rtmax.raw"])))
       ))
       scanrange[scanrange < 1] = 1
-      maxscan = length(xr.l[[pg["sample"]]]@scantime)
+      maxscan = length(xr@scantime)
       scanrange[scanrange > maxscan] = maxscan 
-      eic = rawEIC(xr.l[[pg["sample"]]], mzrange = mzrange, scanrange = scanrange)      
+      eic = rawEIC(xr, mzrange = mzrange, scanrange = scanrange)      
       eic = cbind(do.call("cbind", eic), rt=xs@rt$corrected[[pg["sample"]]][eic$scan])
       
-      scans = foreach(i=scanrange[1]:scanrange[2]) %do% getScan(xr.l[[pg["sample"]]], i, mzrange)
+      scans = foreach(i=scanrange[1]:scanrange[2]) %do% getScan(xr, i, mzrange)
       scanmat = do.call("rbind", scans)
       
       list(
         eic = eic,
         scanmat = scanmat,
-        mzrange = mzrange
+        mzrange = mzrange,
+        sc = scanrange
       )
     }
     
@@ -106,7 +113,7 @@ iter.integrateparams = function(group.l, xs, xr.l, ppm.padding, min.ppm.width = 
 }
 
 integrate.simple = function(params) {
-  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=11, dimnames=list(NULL, c("mz", "rt", "rt.half", "into", "maxo", "mzmin", "mzmax", "rtmin", "rtmax", "mino","sample")))
+  int.mat = matrix(numeric(), nrow=length(params[[1]]), ncol=12, dimnames=list(NULL, c("mz", "rt", "rt.half", "rtmin", "rtmax", "into", "maxo", "mzmin", "mzmax", "mino", "scmin.raw", "scmax.raw")))
   
   for (i in seq(params[[1]])) {
     scan.mat = params[[1]][[i]]$scanmat
@@ -128,14 +135,15 @@ integrate.simple = function(params) {
       mz,
       rtwmean,
       rt.half,
+      min(eic[,"rt"]),
+      max(eic[,"rt"]),
       into,
       max(eic[,"intensity"]),
       params[[1]][[i]]$mzrange[[1]],
       params[[1]][[i]]$mzrange[[2]],
-      min(eic[,"rt"]),
-      max(eic[,"rt"]),
       min(eic[,"intensity"]),
-      i
+      params[[1]][[i]]$sc[1],
+      params[[1]][[i]]$sc[2]
     )
   }
   

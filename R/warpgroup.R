@@ -31,6 +31,7 @@ warpgroup = function(
   pct.pad = 0.1
 ) {
   if (nrow(ps) < min.peaks) stop("Less peaks in starting group than min.peaks.")
+  if (nrow(eic.mat.s) < 3) stop("EIC contains too few points.")
   
   ps = cbind(ps, n=1:nrow(ps))
   
@@ -60,7 +61,7 @@ warpgroup = function(
     g.characteristics.l = list(matrix(NA, ncol=5, nrow=1, dimnames = list(NULL, c("group.degree", "group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))))
   } else {
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), function(sc.ds) (
-      sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
+      sc.ds[2] <= sc.aligned.lim & sc.ds[3] <= sc.aligned.lim |
         sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
         sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
       )
@@ -103,16 +104,27 @@ warpgroup = function(
     sc.a = sc.warps[pns.g,pns.g,,drop=F]
     
     if(length(pns.g) > 1) {
+      # Pick voting peaks
+      zscores = aperm(
+        aaply(sc.d, c(3), scale, center=F),
+        c(2,3,1)
+      )
       
+      foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
+      rowtf = aaply(foo, 2, function(x) { 
+        if (all(is.na(x))) {
+          !is.na(x)
+        } else if (min(x) < .75) {
+          x >= .75
+        } else {
+          x < quantile(x, 0.75)
+        }
+      })
+      rowtf2 = aperm(outer(rowtf, rep(T, ncol(rowtf)), "&"),c(2,3,1))
+      
+      #Iterate to converge chosen bounds
       for (y in 1:4) {
-        zscores = aperm(
-          aaply(sc.d, c(3), scale),
-          c(2,3,1)
-        )
-        
-        voters = zscores > -1 & zscores < 1
-        rowtf= aperm(aaply(voters, c(1,3), function(x) {rep(any(!x), length(x))}), c(1,3,2))
-        sc.a[rowtf] = NA
+        sc.a[rowtf2] = NA
         
         p.sc.params = round(aaply(sc.a, c(3), colMeans, na.rm=T))
       
@@ -206,8 +218,12 @@ warpgroup = function(
           
           warp.consistency[i,j,] = tw.m.rev$step(tw.m$step(c(sc, mean(sc)))) - c(sc,mean(sc))
 
-          sc = c(floor(p["scmin"]), ceiling(p["scmax"])) + tw.m$npad
-          indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
+          sc = sc + tw.m$npad
+          if (length(dim(tw.m$path)) ==2) {
+            indices = which.min(abs(tw.m$path[,1] - sc[1])):which.min(abs(tw.m$path[,1] - sc[2]))
+          } else {
+            indices=1:2
+          }
           
           d.phi.cum[i,j] = (tw.m$d.phi[tail(indices, n=1)] - tw.m$d.phi[1]) / length(indices)
           d.cum[i,j] = sum(tw.m$d[indices]) / length(indices)
@@ -216,7 +232,6 @@ warpgroup = function(
       
       diag(d.phi.cum)= NA
       diag(d.cum)= NA
-      library(matrixStats)
       
       bestpeak = which.min(colMeans(aaply(warp.consistency, 3, rowSds)))
       
