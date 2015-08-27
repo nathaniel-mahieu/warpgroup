@@ -61,7 +61,7 @@ warpgroup = function(
     g.characteristics.l = list(matrix(NA, ncol=5, nrow=1, dimnames = list(NULL, c("group.degree", "group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))))
   } else {
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), function(sc.ds) (
-      sc.ds[2] < sc.aligned.lim & sc.ds[3] < sc.aligned.lim |
+      sc.ds[2] <= sc.aligned.lim & sc.ds[3] <= sc.aligned.lim |
         sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
         sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
       )

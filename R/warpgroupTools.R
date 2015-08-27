@@ -17,9 +17,9 @@ eicMatFromList = function(eic.l, eic.resample.target = Inf, upsample.force = F, 
   length.target.n = eic.resample.target
   
   if (eic.resample.target > 0 & eic.resample.target < 1) { #cat("Downsampling longest EIC to", eic.resample.target * 100, "percent.  This is", length*eic.resample.target, "scans."); 
-    length.target.n = length*eic.resample.target }
+    length.target.n = round(length*eic.resample.target) }
   if (eic.resample.target > 1 & eic.resample.target < Inf) { #cat("Downsampling longest EIC to", eic.resample.target, "scans.  This is", round(eic.resample.target/length * 100), "percent of the longest EIC."); 
-    length.target.n = eic.resample.target }
+    length.target.n = round(eic.resample.target) }
   if (length.target.n > length & upsample.force == F) { #cat("Length target would upsample the timeseries. Instead, adjusting length target to longest timeseries:", length, "override with upsample.force=T."); 
     length.target.n = length }
   
@@ -53,7 +53,7 @@ dtwFunc = function(v1, v2, keep=T) {
     keep=keep, 
     open.end = T,
     open.begin = T, 
-    step.pattern = asymmetricP05, 
+    step.pattern = asymmetricP1, 
     window.type = "none"
   )
 }
