@@ -4,7 +4,7 @@ Warpgroup is an R package for processing chromatography-mass spectrometry data. 
 * Consensus integration bound determination
 * Accurate missing value integration
 
-For more detailed information please see the [publication in Bioinformatics](#)
+For more detailed information please see the [publication in Bioinformatics](http://bioinformatics.oxfordjournals.org/content/early/2015/09/29/bioinformatics.btv564.abstract)
 
 ## R Package
 
