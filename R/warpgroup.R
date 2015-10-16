@@ -234,7 +234,7 @@ warpgroup = function(
       diag(d.phi.cum)= NA
       diag(d.cum)= NA
       
-      bestpeak = which.min(colMeans(aaply(warp.consistency, 3, rowSds)))
+      bestpeak = which.min(colMeans(aaply(warp.consistency, 3, matrixStats::rowSds)))
       
       cbind(g, dtw.distortion = rowMeans(d.phi.cum, na.rm=T), warped.distance = rowMeans(d.cum, na.rm=T), warp.consistency = rowMeans(abs(warp.consistency[,,3])))
       })

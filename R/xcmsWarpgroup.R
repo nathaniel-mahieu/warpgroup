@@ -53,9 +53,7 @@ group.warpgroup = function(
     
     groups = tryCatch(
 {
-  params = nextElem(params)
-  
-  
+
   sc.aligned.lim = round(rt.aligned.lim /  mean(diff(params$eic.mat[1,,"rt"]),na.rm=T))
   
   groups = warpgroup(
