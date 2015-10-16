@@ -34,7 +34,8 @@ group.warpgroup = function(
   output.groups=F,
   sc.aligned.factor = 1,
   detailed.groupinfo = F,
-  min.peaks = 1
+  min.peaks = 1,
+  pct.pad = 0.1
 ) { #Handles parallelization
   cat("This is a wrapper for the warpgroup algorithm to make it compatible with XCMS. The warpgroup algorithm performs peak grouping/clustering between samples, finds consensus peak bounds which describe similar regions of a peak for each group, and finds those consensus bounds in samples where a peak was not detected.\nIf peak detection was poor it is likely that many peak groups will be similar or redundant.\n\nWarpgroup operates on the assumption that all samples will have similar EIC traces. As such warpgroup will incorrectly define peak groups in cases where samples are very different.")
   
@@ -64,7 +65,8 @@ group.warpgroup = function(
     sc.aligned.factor = sc.aligned.factor,
     detailed.groupinfo = detailed.groupinfo,
     min.peaks = min.peaks,
-    tw="dtw"
+    tw="dtw",
+    pct.pad = pct.pad
   )
   
   groups = llply(groups, function(x) {
