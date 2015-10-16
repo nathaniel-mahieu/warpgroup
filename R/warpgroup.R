@@ -45,7 +45,7 @@ warpgroup = function(
     a = ps[i,];
     for(j in seq_along(ps[,1])) { 
       b= ps[j,];
-      a.sc.a = tw.l[[a["sample"]]][[b["sample"]]]$step(
+      a.sc.a = tw.l[[a[["sample"]]]][[b[["sample"]]]]$step(
         a[c("sc", "scmin", "scmax")]
       )
       b.sc.a = b[c("sc", "scmin", "scmax")]
@@ -61,9 +61,7 @@ warpgroup = function(
     g.characteristics.l = list(matrix(NA, ncol=5, nrow=1, dimnames = list(NULL, c("group.degree", "group.density", "group.eccentricity", "group.closeness", "group.parent.modularity"))))
   } else {
     match.mat = aaply(abs(sc.warps.diffs), c(1,2), function(sc.ds) (
-      sc.ds[2] <= sc.aligned.lim & sc.ds[3] <= sc.aligned.lim |
-        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[2] < sc.aligned.lim |
-        sc.ds[1] < sc.aligned.lim*.75 & sc.ds[3] < sc.aligned.lim
+      sc.ds[2] <= sc.aligned.lim & sc.ds[3] <= sc.aligned.lim
       )
     )
 
@@ -106,25 +104,28 @@ warpgroup = function(
     if(length(pns.g) > 1) {
       # Pick voting peaks
       zscores = aperm(
-        aaply(sc.d, c(3), scale, center=F),
+        aaply(sc.d, c(3), function(x) {
+          matrix(scale(c(x), center=F), ncol=ncol(x), byrow=F)
+          }),
         c(2,3,1)
       )
-      
       foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
+      
       rowtf = aaply(foo, 2, function(x) { 
         if (all(is.na(x))) {
           !is.na(x)
-        } else if (min(x) < .75) {
-          x >= .75
-        } else {
+        } else if (min(x) < 1) {
+          x <= 1
+        } else { #Fallback if no peaks within 1 SD
           x < quantile(x, 0.75)
         }
       })
       rowtf2 = aperm(outer(rowtf, rep(T, ncol(rowtf)), "&"),c(2,3,1))
+      celltf = abs(zscores) < 2
       
       #Iterate to converge chosen bounds
       for (y in 1:4) {
-        sc.a[rowtf2] = NA
+        sc.a[!rowtf2 | !celltf] = NA
         
         p.sc.params = round(aaply(sc.a, c(3), colMeans, na.rm=T))
       

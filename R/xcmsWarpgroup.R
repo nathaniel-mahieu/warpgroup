@@ -53,7 +53,8 @@ group.warpgroup = function(
     
     groups = tryCatch(
 {
-  #params = nextElem(params)
+  params = nextElem(params)
+  
   
   sc.aligned.lim = round(rt.aligned.lim /  mean(diff(params$eic.mat[1,,"rt"]),na.rm=T))
   
@@ -162,4 +163,52 @@ add.raw.sc = function(xs) {
   }
   xs@peaks = cbind(xs@peaks, rt.scans)
   xs
+}
+
+
+findbreaks = function(v, l, o = NULL) {
+  if (is.null(o)) o = order(v)
+  breaks = c(0, which(diff(v[o]) >= l), length(v))
+  groups = vector("integer", length(v))
+  for (i in 2:length(breaks)) {
+    groups[o[(breaks[i-1]+1):(breaks[i])]] = i
+  }
+  factor(groups)
+}
+
+group.rough = function(xs, ppm.lim = 5, rt.drift.lim = 120) {
+  chop = 0; count=0; diff="NA";
+  groups.old = rep("1", nrow(xs@peaks)); groups.new = vector("character", nrow(xs@peaks));
+  
+  repeat {
+    c.old = plyr::count(groups.old)
+    groups.todo = c.old[c.old[,"freq"]>1,"x"]
+    cat(sep="","\nChopping pass ", chop, ". Group difference ", diff, ". Total: ", length(groups.todo))
+    
+    for (g in groups.todo) {
+      count = count+1; if (count%%1000 == 0) cat(sep=""," ",count/1000, "k")
+      ids = which(groups.old == as.character(g))
+      
+      mzs = xs@peaks[ids,"mz"]
+      mzs.order = order(mzs)
+      ppm.diffs = diff(mzs[mzs.order])/mzs[mzs.order][-1]*1E6
+      breaks = c(0, which(ppm.diffs >= ppm.lim), length(mzs))
+      mz.groups = vector("integer", length(mzs))
+      for (i in 2:length(breaks)) {
+        mz.groups[mzs.order[(breaks[i-1]+1):(breaks[i])]] = i
+      }
+      mz.groups = factor(mz.groups)
+      
+      rt.groups = findbreaks(xs@peaks[ids,"rt"], rt.drift.lim)
+      
+      groups.new[ids] = paste(sep=".",mz.groups,rt.groups,g,chop)
+    }
+    
+    diff = length(unique(groups.new)) - length(unique(groups.old))
+    groups.old = groups.new; chop = chop+1; count=0;
+    if(diff == 0) break
+  }
+  new.groups = factor(as.numeric(factor(groups.new)))
+  
+  xs = buildGroups(xs, new.groups)
 }

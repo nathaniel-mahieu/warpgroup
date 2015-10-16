@@ -1,4 +1,4 @@
-plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0, type=1) {
+plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0) {
   g = xs@groupidx[[i]]
   ps = xs@peaks[g,,drop=F]
   
@@ -11,7 +11,7 @@ plotGroup.xs = function(i, xs, xr.l, sc.pad = 20, mz.pad = 0, type=1) {
   bounds[,"sample"] = seq(nrow(bounds))
   colnames(bounds) = c("scmin","scmax", "sample")
   
-  plot_peaks_bounds(eic.mat, na.omit(bounds), type=type)
+  plot_peaks_bounds(eic.mat, na.omit(bounds))
 }
 
 plot.warpgroup = function(group, xs, xr.l, sc.pad = 20, mz.pad = 0.001, type=1) {
