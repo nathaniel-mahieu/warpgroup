@@ -178,3 +178,15 @@ buildGroups = function(xs, pgs) {
   xs@groups = groupval
   xs
 }
+
+
+refreshGroups = function(xs, keepall=F) {
+  gs = sapply(seq(xs@groupidx), function(i) { rep(i, length(xs@groupidx[[i]])) })
+  xs2 = xs; xs2@peaks = xs@peaks[unlist(xs@groupidx),]
+  
+  xs3 = buildGroups(xs2, gs)
+  
+  if (keepall) xs3@peaks = rbind(xs3@peaks, xs@peaks[-unlist(xs@groupidx),])
+  
+  xs3
+}

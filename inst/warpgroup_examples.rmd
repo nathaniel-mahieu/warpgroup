@@ -15,7 +15,6 @@ library(ggplot2)
 #Data Format
 ```{r}
 data(example_1_3)
-
 head(eic.mat)
 ```
 Extracted Ion Chromatograms representative of the supplied peak bounds are supplied as a matrix, rows representing scans and columns representing samples.
@@ -47,7 +46,8 @@ We see the peak bounds are not self-consistent, each set of bounds describing a 
 Lets see if we can fix this.
 
 ```{r bound_variation_fixed}
-wg.bounds = warpgroup(bad.bounds, eic.mat, sc.aligned.lim = 6)[[1]]
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
+wg.bounds = warpgroup(bad.bounds, eic.mat, sc.aligned.lim = 20)[[1]]
 plot_peaks_bounds(eic.mat, wg.bounds)
 ```
 
@@ -66,6 +66,8 @@ Again our inital EICs all look good.  Lets delete all the peaks but one and see 
 
 ```{r missing_bounds_deleted}
 bad.bounds = peak.bounds[1,,drop=F]
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
+
 plot_peaks_bounds(eic.mat, bad.bounds)
 ```
 
@@ -108,6 +110,7 @@ plot_peaks_bounds(eic.mat.bad, peak.bounds.bad)
 Here is a case that current algorithms would have no chance at grouping. The inter-sample drift is greater than the separation between the peaks to be grouped.  Lets see how warpgrouping does.
 
 ```{r mixed_group_fixed}
+for (i in seq(ncol(eic.mat.bad))) { eic.mat.bad[,i] = eic.mat.bad[,i]/max(eic.mat.bad[,i]) } #Normalize to 1
 wg.bounds = warpgroup(peak.bounds.bad, eic.mat.bad, sc.aligned.lim = 6)
 
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat.bad, g))
@@ -127,6 +130,7 @@ plot_peaks_bounds(eic.mat, peak.bounds)
 We can clearly see two peaks in most samples.  There is a large retention time drift.  There is also a varying degree of merging between the two peaks.  In some samples two distinct peaks were detected, in others a single peak was detected.  Lets see how warpgroup handles this.
 
 ```{r extreme_example_fixed}
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
 wg.bounds = warpgroup(peak.bounds, eic.mat, sc.aligned.lim = 8)
 
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))

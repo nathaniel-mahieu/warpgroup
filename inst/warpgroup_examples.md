@@ -10,12 +10,10 @@ library(warpgroup)
 library(ggplot2)
 ```
 
-
 #Data Format
 
 ```r
 data(example_1_3)
-
 head(eic.mat)
 ```
 
@@ -77,7 +75,8 @@ Lets see if we can fix this.
 
 
 ```r
-wg.bounds = warpgroup(bad.bounds, eic.mat, sc.aligned.lim = 6)[[1]]
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
+wg.bounds = warpgroup(bad.bounds, eic.mat, sc.aligned.lim = 20)[[1]]
 plot_peaks_bounds(eic.mat, wg.bounds)
 ```
 
@@ -102,6 +101,8 @@ Again our inital EICs all look good.  Lets delete all the peaks but one and see 
 
 ```r
 bad.bounds = peak.bounds[1,,drop=F]
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
+
 plot_peaks_bounds(eic.mat, bad.bounds)
 ```
 
@@ -156,6 +157,7 @@ Here is a case that current algorithms would have no chance at grouping. The int
 
 
 ```r
+for (i in seq(ncol(eic.mat.bad))) { eic.mat.bad[,i] = eic.mat.bad[,i]/max(eic.mat.bad[,i]) } #Normalize to 1
 wg.bounds = warpgroup(peak.bounds.bad, eic.mat.bad, sc.aligned.lim = 6)
 
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat.bad, g))
@@ -181,6 +183,7 @@ We can clearly see two peaks in most samples.  There is a large retention time d
 
 
 ```r
+for (i in seq(ncol(eic.mat))) { eic.mat[,i] = eic.mat[,i]/max(eic.mat[,i]) } #Normalize to 1
 wg.bounds = warpgroup(peak.bounds, eic.mat, sc.aligned.lim = 8)
 
 for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))
