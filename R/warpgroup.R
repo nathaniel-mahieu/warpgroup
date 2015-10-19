@@ -109,11 +109,11 @@ warpgroup = function(
           }),
         c(2,3,1)
       )
-      foo = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
+      rowzs = aaply(zscores, c(1,3), function(x) {mean(abs(x))})
       
-      rowtf = aaply(foo, 2, function(x) { 
+      rowtf = aaply(rowzs, 2, function(x) { 
         if (all(is.na(x))) {
-          !is.na(x)
+          rep(T, length(x))
         } else if (min(x) < 1) {
           x <= 1
         } else { #Fallback if no peaks within 1 SD
@@ -122,10 +122,20 @@ warpgroup = function(
       })
       rowtf2 = aperm(outer(rowtf, rep(T, ncol(rowtf)), "&"),c(2,3,1))
       celltf = abs(zscores) < 2
+      celltf[is.na(celltf)] = T
+      
+      tfmat = rowtf2 & celltf
+      
+      badcols = aaply(tfmat, c(2,3), function(x) {
+        all(!x)
+        })
+      repwtrue = aperm(outer(aperm(badcols), rep(T, nrow(badcols)), "&"), c(3,2,1))
+      tfmat[repwtrue] = T
+      
       
       #Iterate to converge chosen bounds
       for (y in 1:4) {
-        sc.a[!rowtf2 | !celltf] = NA
+        sc.a[!tfmat] = NA
         
         p.sc.params = round(aaply(sc.a, c(3), colMeans, na.rm=T))
       
