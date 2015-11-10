@@ -14,8 +14,9 @@ paste("Subset took", end - start)
 
 - **XCMS Function xxxxx returns an error** Warpgroup returns the output of the algorithm and packs it in an XCMS data structure.  Warpgroup does not ensure that everything XCMS expects is true of the data.  For example, if no ion intensity was detected for one peakgroup in a sample Warpgroup does not assign a peak m/z or retention time to that sample (there was none). Most known errors are due to NA values in the peak table.  Try removing all peaks with NA values and rebuilding the groupvals with something like below.
 ```r
-missing.values = is.na(matrixStats::rowSums(xs@peaks[,c("mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into")]))
-xs@peaks = xs@peaks[!missing.values,,drop=F]
+missing.values = which(is.na(rowSums(xs@peaks[,c("mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into")])))
+xs@peaks = xs@peaks[!(seq(nrow(xs@peaks)) %in% missing.values),,drop=F]
+xs@groupidx = lapply(xs@groupidx, function(x) { x[!(x %in% missing.values)] })
 xs = warpgroup::refreshGroups(xs)
 ```
 
