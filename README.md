@@ -77,5 +77,9 @@ for (g in wg.bounds) print(plot_peaks_bounds(eic.mat, g))
 
 Warpgroup generated three peak groups, each group describing a distinct chromatographic region and the same region in each sample.
 
+# See Also
+- [Examples](/inst/warpgroup_examples.md)
+- [Troubleshooting and Tips](/inst/troubleshooting.md)
+
 # License
 This project is licensed under the terms of the GPL-3 license.
