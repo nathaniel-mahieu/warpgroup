@@ -4,24 +4,31 @@
 \alias{group.warpgroup}
 \title{A wrapper for supplying xcmsSet objects to Warpgroup.}
 \usage{
-group.warpgroup(xs, xr.l, sc.max.drift, ppm.max.drift, sc.aligned.lim,
-  output.groups = F, sc.aligned.factor = 1, detailed.groupinfo = F,
-  min.peaks = 1)
+group.warpgroup(xs, xr.l, rt.max.drift, ppm.max.drift, rt.aligned.lim, smooth.n,
+  normalize = T, eic.resample.target = Inf, output.groups = F,
+  sc.aligned.factor = 1, detailed.groupinfo = F, min.peaks = 1,
+  pct.pad = 0.1)
 }
 \arguments{
 \item{xs}{An xcmsSet object with initial grouping information.}
 
 \item{xr.l}{A list contanining xcmsRaw objects for each sample in the xcmsSet object in order.}
 
-\item{sc.max.drift}{Integer.  The maximum time drift expected for a peak in the data set in scans.  Used when looking for missing peaks.}
+\item{rt.max.drift}{Float.  The maximum retention time drift in seconds expected for a peak in the data set in scans.  Used when setting the boundaries for looking for missing peaks.}
 
-\item{ppm.max.drift}{Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when looking for missing peaks.}
+\item{ppm.max.drift}{Integer. The maximum mass drift expected for a peak in the data set in ppm.  Used when setting the boundaries for looking for missing peaks.}
 
-\item{sc.aligned.lim}{Integer. Peak bounds after alignment are considered the same if they are within this limit.}
+\item{rt.aligned.lim}{Float. Peak bounds after alignment are considered to describe the same region if they are within this limit.}
+
+\item{smooth.n}{Number of points to consider for the moving average smoothing of each EIC. 1 disables smoothing. See \code{\link{eicMatFromList}}}
+
+\item{normalize}{Boolean.  If TRUE all EICs will be normalized to 1. See \code{\link{eicMatFromList}}}
+
+\item{eic.resample.target}{If less than one the resulting EICs will be of length max*length.target.  If greater than 1 resulting EICs will be of length length.target.  If Inf resulting EICs will be of length max. See \code{\link{eicMatFromList}}}
 
 \item{output.groups}{Boolean. If \code{TRUE} the output is a list of warpgroup outputs for every group rather than an xcmsSet.  Allows for better integration parameter selection with \code{\link{warpgroupsToXs}}.}
 
-\item{sc.aligned.factor}{Float. Experimental feature where graph edges are weighted proportionally to the distance between the aligned peak bounds. Higher numbers emphasize closer peak bounds.}
+\item{sc.aligned.factor}{Float. Experimental feature where graph edges are weighted proportionally to the distance be   tween the aligned peak bounds. Higher numbers emphasize closer peak bounds.}
 
 \item{detailed.groupinfo}{Boolean. Returns several extra descriptors of the warping and graph clustering.}
 
@@ -31,7 +38,7 @@ group.warpgroup(xs, xr.l, sc.max.drift, ppm.max.drift, sc.aligned.lim,
 An xcmsSet with groups and peaks replaced by warpgroup generated ones.
 }
 \description{
-\code{group.warpgroup} returns an xcmsSet with the original groups and peaks replaced by those returned by the warpgroup algorithm.
+\code{group.warpgroup} returns an xcmsSet with the original groups and peaks replaced by those returned by the \code{\link{warpgroup}} algorithm.
 }
 \details{
 This function simply iterates over each group in the xcmsSet and runs \code{\link{warpgroup}} on them. The resulting warpgroup output is then re-integrated and returned as a new xcmsSet.
