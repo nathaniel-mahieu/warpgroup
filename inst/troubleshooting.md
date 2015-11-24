@@ -1,5 +1,5 @@
 # Common Questions
-- **Where is warp.consistency?** This parameter is computed when the flag detailed.output is set to true. Eg. `group.warpgroup(detailed.output=T)`
+- **Where is warp.consistency?** This parameter is computed when the flag detailed.groupinfo is set to true. Eg. `group.warpgroup(detailed.groupinfo=T)`
 
 - **Warpgroup never finishes running.** Always test warpgroup on your specific settings and data with a subset to make sure it will complete in a reasonable amount of time.  Due to poor scaling it is possible your analysis will never complete. Ex.
 ```r
@@ -14,9 +14,12 @@ paste("Subset took", end - start)
 
 - **XCMS Function xxxxx returns an error** Warpgroup returns the output of the algorithm and packs it in an XCMS data structure.  Warpgroup does not ensure that everything XCMS expects is true of the data.  For example, if no ion intensity was detected for one peakgroup in a sample Warpgroup does not assign a peak m/z or retention time to that sample (there was none). Most known errors are due to NA values in the peak table.  Try removing all peaks with NA values and rebuilding the groupvals with something like below.
 ```r
-missing.values = which(is.na(rowSums(xs@peaks[,c("mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into")])))
-xs@peaks = xs@peaks[!(seq(nrow(xs@peaks)) %in% missing.values),,drop=F]
-xs@groupidx = lapply(xs@groupidx, function(x) { x[!(x %in% missing.values)] })
+missing.values = which(is.na(xs@peaks[,c("mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into")]), arr.ind = T)
+for (i in seq(nrow(missing.values))) {
+  ps = xs@groupidx[[xs@peaks[i,"new.gidx"]]]
+  xs@peaks[i, missing.values[i,]] = mean(xs@peaks[ps, missing.values[i,]], na.rm=T)
+}
+
 xs = warpgroup::refreshGroups(xs)
 ```
 
@@ -42,3 +45,8 @@ Processing node(s)
 library(doRedis)
 startLocalWorkers(n, "worklist.name", "IP.OF.REDIS.SERVER")
 ```
+
+# Thank You
+Thank you to the following for beta testing and bug report assistance.
+- Kevin Cho
+- Robert Sander Jansen
