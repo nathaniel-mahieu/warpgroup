@@ -37,7 +37,7 @@ eicMatFromList = function(eic.l, eic.resample.target = Inf, upsample.force = F, 
     if (normalize)   m = max(x); m[m==0] = 1; x = x/m
     
     eic.mat.s[i,,c("rt")] = interpolated.int$x
-    eic.mat.s[i,,c("intensity")] = interpolated.int$y
+    eic.mat.s[i,,c("intensity")] = x
     eic.mat.s[i,,c("scan")] = interpolated.scans$y
   }
   
